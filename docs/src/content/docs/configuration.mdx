@@ -99,9 +99,9 @@ This is ideal for monitoring dashboards or exploration where you don't want the 
 
 The server ships with `tools.yaml` embedded in the binary. To customize tool definitions:
 
-1. The server checks for a `tools.yaml` file at the path specified by `-tools` (default: `./tools.yaml`)
-2. If the file doesn't exist, it creates one from the embedded version
-3. If a file exists, it's validated against the expected version before loading
+1. If `-tools` is not provided, the server uses the embedded `tools.yaml` directly (no external file needed)
+2. If `-tools` is provided, the specified file is loaded and validated against the expected version
+3. The server never auto-creates a `tools.yaml` file on disk
 
 <Aside type="note">
 The custom tools file only affects **granular tools mode**. Meta-tools are defined programmatically in Go and are not influenced by `tools.yaml`.
@@ -119,6 +119,7 @@ Each release of the MCP server is validated against a specific Portainer version
 
 | MCP Server | Supported Portainer |
 |:-----------|:-------------------|
+| v0.7.x | 2.39.1 |
 | v0.6.x | 2.31.2 |
 | v0.5.x | 2.30.0 |
 | v0.4.x | 2.27.4 |

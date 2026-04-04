@@ -11,7 +11,7 @@ import { Aside } from '@astrojs/starlight/components';
 ┌─────────────────────┐      MCP Protocol       ┌─────────────────────┐      HTTPS       ┌───────────────┐
 │   AI Assistant       │ ◄──── (stdio/JSON-RPC) ──►│  Portainer MCP      │ ◄──────────────► │  Portainer    │
 │  Claude / Copilot    │                          │  Server             │                  │  API          │
-│  Cursor / etc.       │                          │  (Go binary)        │                  │  v2.31.2      │
+│  Cursor / etc.       │                          │  (Go binary)        │                  │  v2.39.1      │
 └─────────────────────┘                          └─────────────────────┘                  └───────────────┘
 ```
 
@@ -26,6 +26,7 @@ portainer-mcp/
 ├── internal/
 │   ├── mcp/               # MCP server implementation
 │   │   ├── server.go      # Server struct, PortainerClient interface, options
+│   │   ├── client_interfaces.go  # 18 domain-specific client sub-interfaces
 │   │   ├── metatool_registry.go  # 15 meta-tool definitions
 │   │   ├── metatool_handler.go   # Meta-tool routing logic
 │   │   ├── schema.go      # Tool constants, HTTP validation
@@ -34,7 +35,8 @@ portainer-mcp/
 ├── pkg/
 │   ├── portainer/
 │   │   ├── client/        # Wrapper client over raw SDK
-│   │   │   └── adapter.go # Adapter with functional options
+│   │   │   ├── adapter.go     # HTTP transport adapter
+│   │   │   └── adapter_*.go   # 16 domain adapter files (environments, stacks, docker, etc.)
 │   │   └── models/        # Local model definitions + converters
 │   └── toolgen/           # YAML tool definition loader + parameter extraction
 ├── tools.yaml             # Embedded tool definitions (98 tools)
@@ -61,7 +63,7 @@ The core `Server` struct holds:
 - Configuration flags (read-only, granular tools)
 - All tool handler registrations
 
-The `PortainerClient` interface defines ~170 methods covering the entire Portainer API surface. It enables easy testing through mocking.
+The `PortainerClient` interface composes 18 domain-specific sub-interfaces defined in `client_interfaces.go` (e.g., `TagClient`, `EnvironmentClient`, `StackClient`, `DockerClient`, `HelmClient`). This composition enables fine-grained mocking in tests and follows the Interface Segregation Principle.
 
 ### Meta-Tool System
 

@@ -9,17 +9,18 @@ import { FileTree, Aside } from '@astrojs/starlight/components';
 
 <FileTree>
 - cmd/
-  - portainer-mcp/
+  - portainer-mcp-enhanced/
     - mcp.go — CLI entry point, flags, server bootstrap
   - token-count/
     - token.go — Utility to estimate tool-definition token counts
 - internal/
   - mcp/
     - server.go — Server struct, PortainerClient interface, registration
+    - client_interfaces.go — 18 domain-specific client sub-interfaces
     - schema.go — Tool name constants (ToolXxx)
     - metatool_registry.go — Meta-tool definitions and action routing tables
     - metatool_handler.go — Generic meta-tool dispatch handler
-    - utils.go — Shared utilities (JSON serialization, response helpers)
+    - utils.go — Shared utilities (JSON serialization, proxy param parsing, response helpers)
     - access_group.go — Access group CRUD handlers
     - app_template.go — Application template handlers
     - auth.go — Authentication handler
@@ -54,6 +55,7 @@ import { FileTree, Aside } from '@astrojs/starlight/components';
   - portainer/
     - client/
       - adapter.go — Swagger/go-openapi transport adapter
+      - adapter_*.go — 16 domain adapter files (environments, stacks, docker, etc.)
       - client.go — NewPortainerClient constructor + options
       - access_group.go — Access group API calls
       - app_template.go — App template API calls
@@ -124,24 +126,26 @@ import { FileTree, Aside } from '@astrojs/starlight/components';
 | File | Purpose |
 |------|---------|
 | `cmd/portainer-mcp-enhanced/mcp.go` | CLI flags, server initialization, version check |
-| `internal/mcp/server.go` | `PortainerClient` interface (~170 methods), `Server` struct, `AddXxxFeatures()` registration |
+| `internal/mcp/server.go` | `PortainerClient` interface (composes 18 sub-interfaces), `Server` struct, `AddXxxFeatures()` registration |
+| `internal/mcp/client_interfaces.go` | 18 domain-specific client sub-interfaces (`TagClient`, `EnvironmentClient`, etc.) |
 | `internal/mcp/schema.go` | `ToolXxx` string constants mapping tool names |
 | `internal/mcp/metatool_registry.go` | Maps 15 meta-tools → action lists → handler functions |
 | `internal/mcp/metatool_handler.go` | Generic handler that routes `action` param to the correct granular handler |
 | `tools.yaml` | YAML definitions for all 98 tools (names, descriptions, parameters, annotations) |
 | `pkg/toolgen/yaml.go` | Parses `tools.yaml` into MCP `Tool` objects |
-| `pkg/toolgen/param.go` | `GetRequiredString()`, `GetInt()`, etc. — extracts typed parameters from `map[string]interface{}` |
+| `pkg/toolgen/param.go` | `NewParameterParser()` — typed parameter extraction from `mcp.CallToolRequest` |
 | `pkg/portainer/client/adapter.go` | Creates the HTTP transport for the Swagger client |
+| `pkg/portainer/client/adapter_*.go` | 16 domain-specific adapter files (split from the original monolithic adapter) |
 | `pkg/portainer/client/client.go` | `NewPortainerClient()` constructor with functional options |
 
 <Aside type="tip">
-The `PortainerClient` interface in `server.go` is the central contract. Every handler depends on it, and the mock in `mocks_test.go` implements it for unit tests.
+The `PortainerClient` interface in `server.go` composes 18 domain-specific sub-interfaces from `client_interfaces.go`. This is the central contract. Every handler depends on it, and the mock in `mocks_test.go` implements it for unit tests.
 </Aside>
 
 ## Build Artifacts
 
 | Target | Output |
 |--------|--------|
-| `make build` | `dist/portainer-mcp` (current platform) |
-| `make release` | `dist/portainer-mcp` (trimmed, production) |
+| `make build` | `dist/portainer-mcp-enhanced` (current platform) |
+| `make release` | `dist/portainer-mcp-enhanced` (trimmed, production) |
 | `goreleaser release` | Multi-platform binaries, Docker images, checksums |

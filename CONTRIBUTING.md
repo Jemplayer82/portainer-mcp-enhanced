@@ -29,7 +29,7 @@ go vet ./...
 | [Make](https://www.gnu.org/software/make/) | Any | Build automation |
 | [Docker](https://docs.docker.com/get-docker/) | 20+ | Integration tests |
 | [pnpm](https://pnpm.io/installation) | 9+ | Documentation site (optional) |
-| [Portainer](https://www.portainer.io/) | 2.31.2 | Live testing (optional) |
+| [Portainer](https://www.portainer.io/) | 2.39.1 | Live testing (optional) |
 
 ## Project Structure
 
@@ -39,6 +39,7 @@ portainer-mcp/
 ├── internal/
 │   ├── mcp/                   # MCP server core
 │   │   ├── server.go          #   Server struct, interfaces, registration
+│   │   ├── client_interfaces.go #  18 domain-specific client sub-interfaces
 │   │   ├── schema.go          #   Tool name constants
 │   │   ├── metatool_*.go      #   Meta-tool infrastructure
 │   │   ├── utils.go           #   Shared handler utilities
@@ -47,7 +48,7 @@ portainer-mcp/
 │   └── k8sutil/               # Kubernetes response stripping
 ├── pkg/
 │   ├── portainer/
-│   │   ├── client/            # Portainer API wrapper client
+│   │   ├── client/            # Portainer API wrapper client (adapter.go + 16 adapter_*.go)
 │   │   └── models/            # Local models + conversion functions
 │   └── toolgen/               # YAML tool loader + parameter parsing
 ├── tests/integration/         # Integration tests with real Portainer

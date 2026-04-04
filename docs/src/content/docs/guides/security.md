@@ -76,6 +76,7 @@ The `docker_proxy` and `kubernetes_proxy` tools allow proxying arbitrary API cal
 - **Response size limits** — proxy responses are capped at 10 MB to prevent memory exhaustion
 - **HTTP method validation** — only standard HTTP methods (GET, POST, PUT, DELETE, HEAD, PATCH) are accepted
 - **Path validation** — API paths must start with `/`
+- **Path traversal prevention** — API paths containing `../` sequences (including URL-encoded variants like `%2e%2e` and `%252e%252e`) are rejected to prevent directory traversal attacks
 - **Read-only filtering** — in read-only mode, proxy tools are not registered
 
 ### Recommendations
