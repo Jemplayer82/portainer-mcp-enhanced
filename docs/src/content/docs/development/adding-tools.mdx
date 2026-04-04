@@ -22,6 +22,10 @@ Every tool goes through these layers:
 
 ## Step-by-Step
 
+<Aside type="note">
+This guide uses a hypothetical `getContainerLogs` tool as an example. The actual codebase does not include this specific tool — it serves as a clear, self-contained tutorial.
+</Aside>
+
 <Steps>
 1. ### Define the tool in `tools.yaml`
 
@@ -112,7 +116,7 @@ Every tool goes through these layers:
                return mcp.NewToolResultErrorFromErr("failed to get container logs", err), nil
            }
 
-           return jsonResult(logs, "failed to marshal container logs")
+           return mcp.NewToolResultText(logs), nil
        }
    }
    ```

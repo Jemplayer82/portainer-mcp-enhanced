@@ -105,7 +105,7 @@ func TestHandleGetEnvironments(t *testing.T) {
                 tt.mockSetup(mockClient)
             }
             s := &PortainerMCPServer{cli: mockClient}
-            result, err := s.HandleListEnvironments()(context.Background(), CreateMCPRequest(nil))
+            result, err := s.HandleGetEnvironments()(context.Background(), CreateMCPRequest(nil))
             assert.NoError(t, err)
             assert.NotNil(t, result)
             mockClient.AssertExpectations(t)

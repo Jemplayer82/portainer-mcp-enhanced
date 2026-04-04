@@ -115,7 +115,7 @@ Shared parameter parsing via `parseProxyParams()` and `readProxyResponse()` in `
 
 1. **Define in `tools.yaml`** — add YAML entry with name, description, parameters, annotations
 2. **Add constant** in `internal/mcp/schema.go` — e.g., `ToolMyAction = "myAction"`
-3. **Add client method** in `pkg/portainer/client/<domain>.go` + interface in `internal/mcp/client_interfaces.go`
+3. **Add client method** in `pkg/portainer/client/adapter_<domain>.go` (or shared `adapter.go`) + interface in `internal/mcp/client_interfaces.go`
 4. **Add model** in `pkg/portainer/models/` if needed (with `ConvertXxx()`)
 5. **Add handler** in `internal/mcp/<domain>.go` — implement `HandleMyAction()`
 6. **Register** in `Add<Domain>Features()` via `s.addToolIfExists(ToolMyAction, s.HandleMyAction())`
