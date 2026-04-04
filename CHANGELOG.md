@@ -28,6 +28,23 @@ All notable changes to this project are documented in this file.
 ### Changed
 - Updated tools.yaml version to v1.2
 
+### Refactored
+- Split monolithic `PortainerClient` interface into 18 composable domain sub-interfaces (`client_interfaces.go`)
+- Split `adapter.go` (844 lines) into `adapter.go` + 16 domain adapter files (`adapter_*.go`)
+- Extracted shared proxy parameter parsing into `parseProxyParams()` / `readProxyResponse()` helpers
+- Replaced boolean flag parameters on stack methods with option structs (`DeleteStackOptions`, `UpdateStackGitOptions`, `RedeployStackGitOptions`)
+- CLI no longer auto-creates `tools.yaml` on disk — uses embedded YAML when `--tools` is not provided
+
+### Security
+- Added path traversal validation on Docker/Kubernetes proxy paths, including URL-encoded variants (`%2e%2e`, `%252e%252e`)
+- Added nil guards to mock type assertions to prevent test panics
+
+### Compatibility
+- **Bumped `SupportedPortainerVersion` from 2.31.2 to 2.39.1** — users on Portainer 2.31–2.38 must use `--disable-version-check`
+
+### Tests
+- Pushed `internal/mcp` test coverage from 91.0% to 99.2% with comprehensive parameter validation tests across all handlers
+
 ## [v0.6.1] — 2025-05-16
 
 ### Added

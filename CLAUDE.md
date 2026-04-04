@@ -23,8 +23,7 @@ make lint                     # vet + additional checks
 # Run
 dist/portainer-mcp-enhanced \
   --server https://portainer.example.com \
-  --token <api-token> \
-  --tools tools.yaml
+  --token <api-token>
 
 # MCP Inspector (interactive debugging)
 make inspector
@@ -46,7 +45,7 @@ make inspector
 
 ```
 cmd/
-  portainer-mcp/          CLI entry point, flags, version via ldflags
+  portainer-mcp-enhanced/ CLI entry point, flags, version via ldflags
   token-count/            Token counting utility for tools YAML
 internal/
   mcp/                    Core: server, handlers, metatool system, client_interfaces.go
@@ -54,8 +53,8 @@ internal/
   k8sutil/                Kubernetes response stripping utilities
 pkg/
   portainer/
-    client/               HTTP client wrapper for Portainer API (adapter.go + 11 adapter_*.go domain files)
-    models/               Local data models + Convert*() from raw API models (21 files)
+    client/               HTTP client wrapper for Portainer API (adapter.go + 16 adapter_*.go domain files)
+    models/               Local data models + Convert*() from raw API models (35 files)
   toolgen/                Tool YAML code generation + parameter parsing
 tests/
   integration/            Docker-based integration tests
@@ -116,7 +115,7 @@ Shared parameter parsing via `parseProxyParams()` and `readProxyResponse()` in `
 
 1. **Define in `tools.yaml`** — add YAML entry with name, description, parameters, annotations
 2. **Add constant** in `internal/mcp/schema.go` — e.g., `ToolMyAction = "myAction"`
-3. **Add client method** in `pkg/portainer/client/<domain>.go` + interface in `client.go`
+3. **Add client method** in `pkg/portainer/client/adapter_<domain>.go` (or shared `adapter.go`) + interface in `internal/mcp/client_interfaces.go`
 4. **Add model** in `pkg/portainer/models/` if needed (with `ConvertXxx()`)
 5. **Add handler** in `internal/mcp/<domain>.go` — implement `HandleMyAction()`
 6. **Register** in `Add<Domain>Features()` via `s.addToolIfExists(ToolMyAction, s.HandleMyAction())`

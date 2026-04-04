@@ -38,9 +38,10 @@ The project uses a two-layer client architecture:
 
 - Abstraction layer designed specifically for MCP
 - Simplifies the raw client's interface (fewer parameters, cleaner return types)
+- Split into `adapter.go` (HTTP transport) + 16 domain-specific `adapter_*.go` files
 - Handles data transformation between raw and local models
 - Configures HTTP transport (TLS, timeouts, scheme)
-- Used by **MCP server handlers**
+- Used by **MCP server handlers** via `PortainerClient` interface (18 composed sub-interfaces in `client_interfaces.go`)
 
 ## Model Layers
 

@@ -10,8 +10,8 @@ Each tool consists of:
 3. **Handler method** in `internal/mcp/<domain>.go` — implements the tool logic
 4. **Registration** in `Add<Domain>Features()` — connects constant to handler
 5. **Meta-tool entry** in `metatool_registry.go` — groups into a category
-6. **Client method** in `pkg/portainer/client/<domain>.go` — API call logic
-7. **Interface update** in `internal/mcp/server.go` — `PortainerClient` interface
+6. **Client method** in `pkg/portainer/client/adapter_<domain>.go` — API call logic
+7. **Interface update** in `internal/mcp/client_interfaces.go` — domain sub-interface
 
 ## Step-by-Step: Adding a New Tool
 
@@ -42,7 +42,7 @@ ToolMyNewTool = "myNewTool"
 
 ### Step 3: Add client method (if calling Portainer API)
 ```go
-// In pkg/portainer/client/<domain>.go
+// In pkg/portainer/client/adapter_<domain>.go
 func (c *PortainerClient) MyNewAction(id int) (models.Result, error) {
     raw, err := c.cli.SomeAPICall(int64(id))
     if err != nil {

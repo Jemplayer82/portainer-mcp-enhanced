@@ -8,7 +8,7 @@
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/jmrplens/portainer-mcp-enhanced)
 ![License](https://img.shields.io/github/license/jmrplens/portainer-mcp-enhanced)
-![Portainer](https://img.shields.io/badge/Portainer-2.31.2-blue)
+![Portainer](https://img.shields.io/badge/Portainer-2.39.1-blue)
 ![MCP Tools](https://img.shields.io/badge/MCP_Tools-98-green)
 
 [Documentation](https://jmrplens.github.io/portainer-mcp-enhanced/) · [Quickstart](#quickstart) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
@@ -186,6 +186,7 @@ Run with `-read-only` to restrict to read-only operations. All write, update, an
 
 | MCP Server | Supported Portainer |
 |------------|-------------------|
+| v0.7.x | 2.39.1 |
 | v0.6.x | 2.31.2 |
 | v0.5.x | 2.30.0 |
 | v0.4.x | 2.27.4 |

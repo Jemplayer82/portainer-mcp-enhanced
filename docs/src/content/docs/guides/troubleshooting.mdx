@@ -85,7 +85,7 @@ Common issues:
 
 - **Environment not found**: Verify the environment ID exists in Portainer.
 - **Permission denied**: The API token must have access to the target environment.
-- **Invalid API path**: The path must start with `/` and follow the Docker/Kubernetes API specification.
+- **Invalid API path**: The path must start with `/` and follow the Docker/Kubernetes API specification. Paths containing path traversal sequences (`../`) are rejected for security.
 
 ### Build errors after cloning
 

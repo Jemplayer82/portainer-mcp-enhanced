@@ -22,6 +22,10 @@ Every tool goes through these layers:
 
 ## Step-by-Step
 
+<Aside type="note">
+This guide uses a hypothetical `getContainerLogs` tool as an example. The actual codebase does not include this specific tool — it serves as a clear, self-contained tutorial.
+</Aside>
+
 <Steps>
 1. ### Define the tool in `tools.yaml`
 
@@ -85,38 +89,48 @@ Every tool goes through these layers:
    //   - tail (number, optional): Lines from end (default 100)
    //
    // Returns: Container log output as text
-   func (s *Server) HandleGetContainerLogs(params map[string]interface{}) (*mcp.CallToolResult, error) {
-       envID, err := toolgen.GetRequiredInt(params, "environmentId")
-       if err != nil {
-           return nil, fmt.Errorf("invalid environmentId parameter: %w", err)
+   func (s *PortainerMCPServer) HandleGetContainerLogs() server.ToolHandlerFunc {
+       return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+           parser := toolgen.NewParameterParser(request)
+
+           envID, err := parser.GetInt("environmentId", true)
+           if err != nil {
+               return mcp.NewToolResultErrorFromErr("invalid environmentId parameter", err), nil
+           }
+
+           containerID, err := parser.GetString("containerId", true)
+           if err != nil {
+               return mcp.NewToolResultErrorFromErr("invalid containerId parameter", err), nil
+           }
+
+           tail, err := parser.GetInt("tail", false)
+           if err != nil {
+               return mcp.NewToolResultErrorFromErr("invalid tail parameter", err), nil
+           }
+           if tail == 0 {
+               tail = 100
+           }
+
+           logs, err := s.cli.GetContainerLogs(envID, containerID, tail)
+           if err != nil {
+               return mcp.NewToolResultErrorFromErr("failed to get container logs", err), nil
+           }
+
+           return mcp.NewToolResultText(logs), nil
        }
-
-       containerID, err := toolgen.GetRequiredString(params, "containerId")
-       if err != nil {
-           return nil, fmt.Errorf("invalid containerId parameter: %w", err)
-       }
-
-       tail := toolgen.GetIntDefault(params, "tail", 100)
-
-       logs, err := s.client.GetContainerLogs(envID, containerID, tail)
-       if err != nil {
-           return nil, fmt.Errorf("failed to get container logs: %w", err)
-       }
-
-       return toolResultJSON(logs)
    }
    ```
 
    **Key conventions:**
    - Godoc comment with Parameters/Returns sections
-   - `GetRequired*` for required params (returns error if missing)
-   - `Get*Default` for optional params (returns default value)
-   - Error wrapping with `fmt.Errorf("context: %w", err)`
-   - Return `toolResultJSON()` for structured data or `toolResultText()` for plain text
+   - `parser.GetString/GetInt/GetBool(name, required)` for parameter extraction
+   - Return `mcp.NewToolResultErrorFromErr()` for parameter/API errors (not Go errors)
+   - Error wrapping with `fmt.Errorf("context: %w", err)` in the client layer
+   - Return `jsonResult()` for structured data or `mcp.NewToolResultText()` for plain text
 
 4. ### Add the client method
 
-   **Interface** — add to `PortainerClient` in `internal/mcp/server.go`:
+   **Interface** — add to the appropriate domain interface in `internal/mcp/client_interfaces.go` (or create a new one if needed):
 
    ```go
    GetContainerLogs(environmentID int, containerID string, tail int) (string, error)
@@ -161,9 +175,9 @@ Every tool goes through these layers:
    In the appropriate `AddXxxFeatures()` function in `internal/mcp/`:
 
    ```go
-   func (s *Server) AddDockerFeatures(reg ToolRegistrar) {
+   func (s *PortainerMCPServer) AddDockerFeatures() {
        // ... existing tools ...
-       reg.AddTool(tools[ToolGetContainerLogs], s.HandleGetContainerLogs)
+       s.addToolIfExists(ToolGetContainerLogs, s.HandleGetContainerLogs())
    }
    ```
 
@@ -190,63 +204,58 @@ Every tool goes through these layers:
    ```go
    func TestHandleGetContainerLogs(t *testing.T) {
        tests := []struct {
-           name    string
-           params  map[string]interface{}
-           mock    func(*MockClient)
-           wantErr bool
+           name      string
+           args      map[string]any
+           mockSetup func(*MockPortainerClient)
+           wantErr   bool
        }{
            {
                name: "valid request",
-               params: map[string]interface{}{
+               args: map[string]any{
                    "environmentId": float64(1),
                    "containerId":   "abc123",
                },
-               mock: func(m *MockClient) {
-                   m.GetContainerLogsFunc = func(envID int, cID string, tail int) (string, error) {
-                       return "log output", nil
-                   }
+               mockSetup: func(m *MockPortainerClient) {
+                   m.On("GetContainerLogs", 1, "abc123", 100).Return("log output", nil)
                },
            },
            {
                name:    "missing environment ID",
-               params:  map[string]interface{}{"containerId": "abc"},
+               args:    map[string]any{"containerId": "abc"},
                wantErr: true,
            },
            {
                name:    "missing container ID",
-               params:  map[string]interface{}{"environmentId": float64(1)},
+               args:    map[string]any{"environmentId": float64(1)},
                wantErr: true,
            },
        }
        for _, tt := range tests {
            t.Run(tt.name, func(t *testing.T) {
-               mock := &MockClient{}
-               if tt.mock != nil {
-                   tt.mock(mock)
+               mockClient := &MockPortainerClient{}
+               if tt.mockSetup != nil {
+                   tt.mockSetup(mockClient)
                }
-               s := &Server{client: mock}
-               result, err := s.HandleGetContainerLogs(tt.params)
+               s := &PortainerMCPServer{cli: mockClient}
+               result, err := s.HandleGetContainerLogs()(context.Background(), CreateMCPRequest(tt.args))
                if tt.wantErr {
-                   assert.Error(t, err)
+                   assert.True(t, result.IsError)
                } else {
                    assert.NoError(t, err)
                    assert.NotNil(t, result)
                }
+               mockClient.AssertExpectations(t)
            })
        }
    }
    ```
 
-   **Mock** — add to `mocks_test.go`:
+   **Mock** — add to `mocks_test.go` using `testify/mock`:
 
    ```go
-   GetContainerLogsFunc func(int, string, int) (string, error)
-
-   func (m *MockClient) GetContainerLogs(envID int, containerID string, tail int) (string, error) {
-       if m.GetContainerLogsFunc != nil {
-           return m.GetContainerLogsFunc(envID, containerID, tail)
-       }
-       return "", nil
+   func (m *MockPortainerClient) GetContainerLogs(envID int, containerID string, tail int) (string, error) {
+       args := m.Called(envID, containerID, tail)
+       return args.String(0), args.Error(1)
    }
    ```
 </Steps>

@@ -88,25 +88,27 @@ go tool cover -html=coverage.out    # Open in browser
 func TestHandleGetEnvironments(t *testing.T) {
     tests := []struct {
         name       string
-        params     map[string]interface{}
-        setupMock  func(*MockClient)
+        mockSetup  func(*MockPortainerClient)
         wantErr    bool
-        wantResult string
     }{
         {
-            name:   "returns all environments",
-            params: map[string]interface{}{},
-            setupMock: func(m *MockClient) {
-                m.GetEnvironmentsFunc = func() ([]models.Environment, error) {
-                    return []models.Environment{{ID: 1, Name: "local"}}, nil
-                }
+            name: "returns all environments",
+            mockSetup: func(m *MockPortainerClient) {
+                m.On("GetEnvironments").Return([]models.Environment{{ID: 1, Name: "local"}}, nil)
             },
-            wantResult: `"id":1`,
         },
     }
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // setup, execute, assert
+            mockClient := &MockPortainerClient{}
+            if tt.mockSetup != nil {
+                tt.mockSetup(mockClient)
+            }
+            s := &PortainerMCPServer{cli: mockClient}
+            result, err := s.HandleGetEnvironments()(context.Background(), CreateMCPRequest(nil))
+            assert.NoError(t, err)
+            assert.NotNil(t, result)
+            mockClient.AssertExpectations(t)
         })
     }
 }
@@ -193,7 +195,7 @@ export LOG_LEVEL=debug   # trace, debug, info, warn, error
 | `TLS handshake failure` | Use `-skip-tls-verify` for self-signed certificates |
 | Empty tool list | Check that `tools.yaml` is embedded correctly (`go build` from repo root) |
 | Integration tests fail | Ensure Docker daemon is running and you have network access |
-| `permission denied` on binary | Run `chmod +x dist/portainer-mcp` |
+| `permission denied` on binary | Run `chmod +x dist/portainer-mcp-enhanced` |
 
 ## Documentation Site
 
