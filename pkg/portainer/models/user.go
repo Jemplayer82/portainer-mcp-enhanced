@@ -21,8 +21,8 @@ const (
 
 // User role ID constants as used by the Portainer API
 const (
-	UserRoleIDAdmin    int64 = 1
-	UserRoleIDUser     int64 = 2
+	UserRoleIDAdmin     int64 = 1
+	UserRoleIDUser      int64 = 2
 	UserRoleIDEdgeAdmin int64 = 3
 )
 

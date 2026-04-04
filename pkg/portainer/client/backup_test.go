@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestGetBackupStatus verifies get backup status behavior.

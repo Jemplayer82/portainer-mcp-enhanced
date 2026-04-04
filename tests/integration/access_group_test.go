@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	mcpmodels "github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/jmrplens/portainer-mcp-enhanced/tests/integration/helpers"

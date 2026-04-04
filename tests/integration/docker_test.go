@@ -7,11 +7,12 @@ import (
 
 	mcpmodels "github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 	"github.com/jmrplens/portainer-mcp-enhanced/tests/integration/containers"
 	"github.com/jmrplens/portainer-mcp-enhanced/tests/integration/helpers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (

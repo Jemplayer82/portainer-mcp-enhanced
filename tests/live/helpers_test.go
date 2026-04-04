@@ -14,8 +14,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 )
 
 const (

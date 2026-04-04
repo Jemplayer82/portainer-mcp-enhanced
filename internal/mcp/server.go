@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,10 +10,11 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/client"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 	"github.com/rs/zerolog/log"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/internal/tooldef"
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/client"
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	// This uses the same "v{major}.{minor}" format as tools.yaml version strings.
 	MinimumToolsVersion = "v1.0"
 	// SupportedPortainerVersion is the version of Portainer that is supported by this tool
-	SupportedPortainerVersion = "2.31.2"
+	SupportedPortainerVersion = "2.39.1"
 	// maxProxyResponseSize is the maximum allowed response body size (10MB) for Docker/K8s proxy calls
 	maxProxyResponseSize = 10 * 1024 * 1024
 )
@@ -31,167 +31,30 @@ const (
 // client wrapper. It abstracts all Portainer API interactions so that the MCP handlers
 // never communicate with the Portainer HTTP API directly.
 //
-// The interface covers the following resource domains:
-//   - Environments (endpoints): CRUD, snapshots, access control
-//   - Environment groups and access groups: grouping and permission management
-//   - Stacks: edge stacks and regular (non-edge) compose/swarm stacks
-//   - Users and teams: identity and team membership management
-//   - Settings: server, public, and SSL configuration
-//   - Templates: application templates and custom templates
-//   - Registries: container registry management
-//   - Docker and Kubernetes proxies: raw API pass-through to container engines
-//   - Tags, roles, webhooks, backups, edge jobs, Helm, auth, and system status
+// It composes 18 domain-specific interfaces defined in client_interfaces.go,
+// covering environments, stacks, users, teams, Docker/Kubernetes proxies,
+// Helm, registries, templates, backups, edge compute, settings, and system.
 //
 // Implementations must be safe for concurrent use by multiple MCP handler goroutines.
 type PortainerClient interface {
-	// Tag methods
-	GetEnvironmentTags() ([]models.EnvironmentTag, error)
-	CreateEnvironmentTag(name string) (int, error)
-	DeleteEnvironmentTag(id int) error
-
-	// Environment methods
-	GetEnvironments() ([]models.Environment, error)
-	GetEnvironment(id int) (models.Environment, error)
-	DeleteEnvironment(id int) error
-	SnapshotEnvironment(id int) error
-	SnapshotAllEnvironments() error
-	UpdateEnvironmentTags(id int, tagIds []int) error
-	UpdateEnvironmentUserAccesses(id int, userAccesses map[int]string) error
-	UpdateEnvironmentTeamAccesses(id int, teamAccesses map[int]string) error
-
-	// Environment Group methods
-	GetEnvironmentGroups() ([]models.Group, error)
-	CreateEnvironmentGroup(name string, environmentIds []int) (int, error)
-	UpdateEnvironmentGroupName(id int, name string) error
-	UpdateEnvironmentGroupEnvironments(id int, environmentIds []int) error
-	UpdateEnvironmentGroupTags(id int, tagIds []int) error
-
-	// Access Group methods
-	GetAccessGroups() ([]models.AccessGroup, error)
-	CreateAccessGroup(name string, environmentIds []int) (int, error)
-	UpdateAccessGroupName(id int, name string) error
-	UpdateAccessGroupUserAccesses(id int, userAccesses map[int]string) error
-	UpdateAccessGroupTeamAccesses(id int, teamAccesses map[int]string) error
-	AddEnvironmentToAccessGroup(id int, environmentId int) error
-	RemoveEnvironmentFromAccessGroup(id int, environmentId int) error
-
-	// Stack methods
-	GetStacks() ([]models.Stack, error)
-	GetStackFile(id int) (string, error)
-	CreateStack(name string, file string, environmentGroupIds []int) (int, error)
-	UpdateStack(id int, file string, environmentGroupIds []int) error
-
-	// Regular stack methods
-	GetRegularStacks() ([]models.RegularStack, error)
-	InspectStack(id int) (models.RegularStack, error)
-	DeleteStack(id int, endpointID int, removeVolumes bool) error
-	InspectStackFile(id int) (string, error)
-	UpdateStackGit(id int, endpointID int, referenceName string, prune bool) (models.RegularStack, error)
-	RedeployStackGit(id int, endpointID int, pullImage bool, prune bool) (models.RegularStack, error)
-	StartStack(id int, endpointID int) (models.RegularStack, error)
-	StopStack(id int, endpointID int) (models.RegularStack, error)
-	MigrateStack(id int, endpointID int, targetEndpointID int, name string) (models.RegularStack, error)
-
-	// Team methods
-	CreateTeam(name string) (int, error)
-	GetTeam(id int) (models.Team, error)
-	GetTeams() ([]models.Team, error)
-	DeleteTeam(id int) error
-	UpdateTeamName(id int, name string) error
-	UpdateTeamMembers(id int, userIds []int) error
-
-	// User methods
-	CreateUser(username, password, role string) (int, error)
-	GetUser(id int) (models.User, error)
-	GetUsers() ([]models.User, error)
-	DeleteUser(id int) error
-	UpdateUserRole(id int, role string) error
-
-	// Settings methods
-	GetSettings() (models.PortainerSettings, error)
-	UpdateSettings(settingsJSON map[string]interface{}) error
-	GetPublicSettings() (models.PublicSettings, error)
-
-	// SSL methods
-	GetSSLSettings() (models.SSLSettings, error)
-	UpdateSSLSettings(cert, key string, httpEnabled *bool) error
-
-	// App Template methods
-	GetAppTemplates() ([]models.AppTemplate, error)
-	GetAppTemplateFile(id int) (string, error)
-
-	// Version methods
-	GetVersion() (string, error)
-
-	// Docker Proxy methods
-	ProxyDockerRequest(opts models.DockerProxyRequestOptions) (*http.Response, error)
-	GetDockerDashboard(environmentId int) (models.DockerDashboard, error)
-
-	// Kubernetes Proxy methods
-	ProxyKubernetesRequest(opts models.KubernetesProxyRequestOptions) (*http.Response, error)
-
-	// Kubernetes Native methods
-	GetKubernetesDashboard(environmentId int) (models.KubernetesDashboard, error)
-	GetKubernetesNamespaces(environmentId int) ([]models.KubernetesNamespace, error)
-	GetKubernetesConfig(environmentId int) (interface{}, error)
-
-	GetWebhooks() ([]models.Webhook, error)
-	CreateWebhook(resourceId string, endpointId int, webhookType int) (int, error)
-	DeleteWebhook(id int) error
-
-	// System methods
-	GetSystemStatus() (models.SystemStatus, error)
-
-	// Custom Template methods
-	GetCustomTemplates() ([]models.CustomTemplate, error)
-	GetCustomTemplate(id int) (models.CustomTemplate, error)
-	GetCustomTemplateFile(id int) (string, error)
-	CreateCustomTemplate(title, description, note, logo, fileContent string, platform, templateType int) (int, error)
-	DeleteCustomTemplate(id int) error
-
-	// Registry methods
-	GetRegistries() ([]models.Registry, error)
-	GetRegistry(id int) (models.Registry, error)
-	CreateRegistry(name string, registryType int, url string, authentication bool, username string, password string, baseURL string) (int, error)
-	UpdateRegistry(id int, name *string, url *string, authentication *bool, username *string, password *string, baseURL *string) error
-	DeleteRegistry(id int) error
-
-	// Backup methods
-	GetBackupStatus() (models.BackupStatus, error)
-	GetBackupS3Settings() (models.S3BackupSettings, error)
-	CreateBackup(password string) error
-	BackupToS3(settings models.S3BackupSettings) error
-	RestoreFromS3(accessKeyID, bucketName, filename, password, region, s3CompatibleHost, secretAccessKey string) error
-
-	// Role methods
-	GetRoles() ([]models.Role, error)
-
-	// MOTD methods
-	GetMOTD() (models.MOTD, error)
-
-	// Edge Job methods
-	GetEdgeJobs() ([]models.EdgeJob, error)
-	GetEdgeJob(id int) (models.EdgeJob, error)
-	GetEdgeJobFile(id int) (string, error)
-	CreateEdgeJob(name, cronExpression, fileContent string, endpoints []int, edgeGroups []int, recurring bool) (int, error)
-	DeleteEdgeJob(id int) error
-
-	// Edge Update Schedule methods
-	GetEdgeUpdateSchedules() ([]models.EdgeUpdateSchedule, error)
-
-	// Auth methods
-	AuthenticateUser(username, password string) (models.AuthResponse, error)
-	Logout() error
-
-	// Helm methods
-	GetHelmRepositories(userId int) (models.HelmRepositoryList, error)
-	CreateHelmRepository(userId int, url string) (models.HelmRepository, error)
-	DeleteHelmRepository(userId int, repositoryId int) error
-	SearchHelmCharts(repo string, chart string) (string, error)
-	InstallHelmChart(environmentId int, chart, name, namespace, repo, values, version string) (models.HelmReleaseDetails, error)
-	GetHelmReleases(environmentId int, namespace, filter, selector string) ([]models.HelmRelease, error)
-	DeleteHelmRelease(environmentId int, release, namespace string) error
-	GetHelmReleaseHistory(environmentId int, name, namespace string) ([]models.HelmReleaseDetails, error)
+	TagClient
+	EnvironmentClient
+	EnvironmentGroupClient
+	AccessGroupClient
+	StackClient
+	TeamClient
+	UserClient
+	SettingsClient
+	TemplateClient
+	DockerClient
+	KubernetesClient
+	RegistryClient
+	BackupClient
+	WebhookClient
+	EdgeClient
+	HelmClient
+	AuthClient
+	SystemClient
 }
 
 // PortainerMCPServer is the main MCP server that bridges AI assistants and the
@@ -285,7 +148,15 @@ func NewPortainerMCPServer(serverURL, token, toolsPath string, options ...Server
 		option(opts)
 	}
 
-	tools, err := toolgen.LoadToolsFromYAML(toolsPath, MinimumToolsVersion)
+	var (
+		tools map[string]mcp.Tool
+		err   error
+	)
+	if toolsPath != "" {
+		tools, err = toolgen.LoadToolsFromYAML(toolsPath, MinimumToolsVersion)
+	} else {
+		tools, err = toolgen.LoadToolsFromBytes(tooldef.ToolsFile, MinimumToolsVersion)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tools: %w", err)
 	}
@@ -357,7 +228,7 @@ func isCompatibleVersion(actual, supported string) bool {
 }
 
 // majorMinor extracts the "major.minor" prefix from a version string.
-// For example, "2.31.2" returns "2.31" and "2.31" returns "2.31".
+// For example, "2.39.1" returns "2.39" and "2.39" returns "2.39".
 func majorMinor(version string) string {
 	parts := strings.SplitN(version, ".", 3)
 	if len(parts) < 2 {

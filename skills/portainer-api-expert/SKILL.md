@@ -86,4 +86,4 @@ API token is passed via CLI `--token` flag. The SDK client sets it as the `X-API
 
 ## Version Compatibility
 
-This server validates that the connected Portainer instance matches `SupportedPortainerVersion` (currently 2.31.2). Major and minor version must match; patch version is flexible. Use `--disable-version-check` to bypass.
+This server validates that the connected Portainer instance matches `SupportedPortainerVersion` (currently 2.39.1). Major and minor version must match; patch version is flexible. Use `--disable-version-check` to bypass.

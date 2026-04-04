@@ -6,6 +6,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 )
 
@@ -193,7 +195,10 @@ func (s *PortainerMCPServer) HandleDeleteStack() server.ToolHandlerFunc {
 			return mcp.NewToolResultErrorFromErr("invalid removeVolumes parameter", err), nil
 		}
 
-		err = s.cli.DeleteStack(id, endpointID, removeVolumes)
+		err = s.cli.DeleteStack(id, models.DeleteStackOptions{
+			EndpointID:    endpointID,
+			RemoveVolumes: removeVolumes,
+		})
 		if err != nil {
 			return mcp.NewToolResultErrorFromErr("failed to delete stack", err), nil
 		}
@@ -255,7 +260,11 @@ func (s *PortainerMCPServer) HandleUpdateStackGit() server.ToolHandlerFunc {
 			return mcp.NewToolResultErrorFromErr("invalid prune parameter", err), nil
 		}
 
-		stack, err := s.cli.UpdateStackGit(id, endpointID, referenceName, prune)
+		stack, err := s.cli.UpdateStackGit(id, models.UpdateStackGitOptions{
+			EndpointID:    endpointID,
+			ReferenceName: referenceName,
+			Prune:         prune,
+		})
 		if err != nil {
 			return mcp.NewToolResultErrorFromErr("failed to update stack git", err), nil
 		}
@@ -295,7 +304,11 @@ func (s *PortainerMCPServer) HandleRedeployStackGit() server.ToolHandlerFunc {
 			return mcp.NewToolResultErrorFromErr("invalid prune parameter", err), nil
 		}
 
-		stack, err := s.cli.RedeployStackGit(id, endpointID, pullImage, prune)
+		stack, err := s.cli.RedeployStackGit(id, models.RedeployStackGitOptions{
+			EndpointID: endpointID,
+			PullImage:  pullImage,
+			Prune:      prune,
+		})
 		if err != nil {
 			return mcp.NewToolResultErrorFromErr("failed to redeploy stack", err), nil
 		}

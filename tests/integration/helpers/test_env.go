@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"github.com/portainer/client-api-go/v2/client"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 	"github.com/jmrplens/portainer-mcp-enhanced/tests/integration/containers"
-	"github.com/stretchr/testify/require"
 )
 
 const (

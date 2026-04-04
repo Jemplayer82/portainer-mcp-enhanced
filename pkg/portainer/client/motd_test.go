@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestGetMOTD verifies get m o t d behavior.

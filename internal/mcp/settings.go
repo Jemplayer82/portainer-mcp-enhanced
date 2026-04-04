@@ -6,6 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 )
 
@@ -49,7 +50,7 @@ func (s *PortainerMCPServer) HandleUpdateSettings() server.ToolHandlerFunc {
 			return mcp.NewToolResultErrorFromErr("invalid settings parameter", err), nil
 		}
 
-		var settingsMap map[string]interface{}
+		var settingsMap map[string]any
 		if err := json.Unmarshal([]byte(settingsJSON), &settingsMap); err != nil {
 			return mcp.NewToolResultErrorFromErr("failed to parse settings JSON", err), nil
 		}

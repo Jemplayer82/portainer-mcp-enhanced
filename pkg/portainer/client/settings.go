@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
@@ -19,7 +20,7 @@ func (c *PortainerClient) GetSettings() (models.PortainerSettings, error) {
 }
 
 // UpdateSettings updates the Portainer settings from a JSON map.
-func (c *PortainerClient) UpdateSettings(settingsJSON map[string]interface{}) error {
+func (c *PortainerClient) UpdateSettings(settingsJSON map[string]any) error {
 	data, err := json.Marshal(settingsJSON)
 	if err != nil {
 		return fmt.Errorf("failed to marshal settings: %w", err)

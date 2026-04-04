@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleListWebhooks verifies the HandleListWebhooks MCP tool handler.
@@ -132,6 +133,28 @@ func TestHandleCreateWebhook(t *testing.T) {
 			mockError:   nil,
 			expectError: true,
 		},
+		{
+			name: "endpointId zero triggers validatePositiveID error",
+			params: map[string]any{
+				"resourceId":  "svc1",
+				"endpointId":  float64(0),
+				"webhookType": float64(1),
+			},
+			mockID:      0,
+			mockError:   nil,
+			expectError: true,
+		},
+		{
+			name: "invalid webhookType triggers isValidWebhookType error",
+			params: map[string]any{
+				"resourceId":  "svc1",
+				"endpointId":  float64(2),
+				"webhookType": float64(3),
+			},
+			mockID:      0,
+			mockError:   nil,
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -140,11 +163,15 @@ func TestHandleCreateWebhook(t *testing.T) {
 			if resourceId, ok := tt.params["resourceId"]; ok {
 				if endpointId, ok2 := tt.params["endpointId"]; ok2 {
 					if webhookType, ok3 := tt.params["webhookType"]; ok3 {
-						mockClient.On("CreateWebhook",
-							resourceId.(string),
-							int(endpointId.(float64)),
-							int(webhookType.(float64)),
-						).Return(tt.mockID, tt.mockError)
+						endpointIdInt := int(endpointId.(float64))
+						webhookTypeInt := int(webhookType.(float64))
+						if endpointIdInt > 0 && (webhookTypeInt == 1 || webhookTypeInt == 2) {
+							mockClient.On("CreateWebhook",
+								resourceId.(string),
+								endpointIdInt,
+								webhookTypeInt,
+							).Return(tt.mockID, tt.mockError)
+						}
 					}
 				}
 			}
@@ -224,12 +251,23 @@ func TestHandleDeleteWebhook(t *testing.T) {
 				// No parameters
 			},
 		},
+		{
+			name:        "id zero triggers validatePositiveID error",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			if !tt.expectError || tt.mockError != nil {
+			if tt.inputID > 0 && (!tt.expectError || tt.mockError != nil) {
 				mockClient.On("DeleteWebhook", tt.inputID).Return(tt.mockError)
 			}
 

@@ -6,13 +6,10 @@ package main
 import (
 	"flag"
 
-	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/internal/tooldef"
 	"github.com/rs/zerolog/log"
-)
 
-// defaultToolsPath is the default file path for the tools YAML configuration.
-const defaultToolsPath = "tools.yaml"
+	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
+)
 
 var (
 	// Version is the version of the portainer-mcp application, set at build time.
@@ -45,21 +42,10 @@ func main() {
 	}
 
 	toolsPath := *toolsFlag
-	if toolsPath == "" {
-		toolsPath = defaultToolsPath
-	}
-
-	// We first check if the tools.yaml file exists
-	// We'll create it from the embedded version if it doesn't exist
-	exists, err := tooldef.CreateToolsFileIfNotExists(toolsPath)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create tools.yaml file")
-	}
-
-	if exists {
-		log.Info().Msg("using existing tools.yaml file")
+	if toolsPath != "" {
+		log.Info().Str("tools-path", toolsPath).Msg("using custom tools.yaml file")
 	} else {
-		log.Info().Msg("created tools.yaml file")
+		log.Info().Msg("using embedded tools.yaml")
 	}
 
 	log.Info().

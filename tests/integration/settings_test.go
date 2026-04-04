@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	go_mcp "github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/internal/mcp"
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/jmrplens/portainer-mcp-enhanced/tests/integration/helpers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestSettingsManagement is an integration test suite that verifies the retrieval

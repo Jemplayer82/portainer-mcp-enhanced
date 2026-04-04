@@ -8,6 +8,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLoadToolsFromYAML verifies load tools from y a m l behavior.
@@ -261,6 +262,60 @@ tools:
 		t.Fatalf("Failed to create invalid YAML file: %v", err)
 	}
 	return path
+}
+
+// TestLoadToolsFromBytes verifies that tools can be loaded directly from
+// embedded bytes without touching the filesystem.
+func TestLoadToolsFromBytes(t *testing.T) {
+	yamlContent := []byte(`version: "v1.0.0"
+tools:
+  - name: testTool
+    description: A test tool
+    parameters:
+      - name: param1
+        type: string
+        required: true
+        description: A test parameter
+    annotations:
+      title: Test Tool Title
+      readOnlyHint: true
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: false`)
+
+	t.Run("loads tools from bytes", func(t *testing.T) {
+		tools, err := LoadToolsFromBytes(yamlContent, "v1.0")
+		assert.NoError(t, err)
+		assert.Len(t, tools, 1)
+		assert.Contains(t, tools, "testTool")
+	})
+
+	t.Run("rejects old version", func(t *testing.T) {
+		_, err := LoadToolsFromBytes(yamlContent, "v2.0")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "version")
+	})
+
+	t.Run("rejects invalid yaml", func(t *testing.T) {
+		_, err := LoadToolsFromBytes([]byte("not: [valid yaml content"), "v1.0")
+		assert.Error(t, err)
+	})
+
+	t.Run("does not write to filesystem", func(t *testing.T) {
+		// Run in a read-only temp dir to prove no filesystem writes happen
+		readOnlyDir := t.TempDir()
+		require.NoError(t, os.Chmod(readOnlyDir, 0555))
+		defer func() { _ = os.Chmod(readOnlyDir, 0755) }()
+
+		origDir, err := os.Getwd()
+		require.NoError(t, err)
+		require.NoError(t, os.Chdir(readOnlyDir))
+		defer func() { _ = os.Chdir(origDir) }()
+
+		tools, err := LoadToolsFromBytes(yamlContent, "v1.0")
+		assert.NoError(t, err)
+		assert.Len(t, tools, 1)
+	})
 }
 
 // TestConvertToolDefinition verifies the ConvertToolDefinition model conversion function.

@@ -533,14 +533,14 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with managedFields",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
-						"managedFields": []interface{}{
-							map[string]interface{}{
+						"managedFields": []any{
+							map[string]any{
 								"manager":    "kubectl-client-side-apply",
 								"operation":  "Update",
 								"apiVersion": "v1",
@@ -548,9 +548,9 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 							},
 						},
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -559,16 +559,16 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -582,16 +582,16 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object without managedFields",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -600,16 +600,16 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -623,12 +623,12 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object without metadata",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -637,12 +637,12 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -656,13 +656,13 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with non-map metadata",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
 					"metadata":   "not-a-map",
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -671,13 +671,13 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
 					"metadata":   "not-a-map",
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -691,45 +691,45 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with complex metadata",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Service",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-service",
 						"namespace": "default",
-						"labels": map[string]interface{}{
+						"labels": map[string]any{
 							"app":     "test",
 							"version": "v1",
 						},
-						"annotations": map[string]interface{}{
+						"annotations": map[string]any{
 							"key1": "value1",
 							"key2": "value2",
 						},
-						"managedFields": []interface{}{
-							map[string]interface{}{
+						"managedFields": []any{
+							map[string]any{
 								"manager":    "kubectl-client-side-apply",
 								"operation":  "Update",
 								"apiVersion": "v1",
 								"time":       "2023-01-01T00:00:00Z",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"manager":    "controller-manager",
 								"operation":  "Apply",
 								"apiVersion": "v1",
 								"time":       "2023-01-02T00:00:00Z",
 							},
 						},
-						"ownerReferences": []interface{}{
-							map[string]interface{}{
+						"ownerReferences": []any{
+							map[string]any{
 								"apiVersion": "apps/v1",
 								"kind":       "Deployment",
 								"name":       "test-deployment",
 							},
 						},
 					},
-					"spec": map[string]interface{}{
-						"ports": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
 								"port": 80,
 							},
 						},
@@ -737,31 +737,31 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Service",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-service",
 						"namespace": "default",
-						"labels": map[string]interface{}{
+						"labels": map[string]any{
 							"app":     "test",
 							"version": "v1",
 						},
-						"annotations": map[string]interface{}{
+						"annotations": map[string]any{
 							"key1": "value1",
 							"key2": "value2",
 						},
-						"ownerReferences": []interface{}{
-							map[string]interface{}{
+						"ownerReferences": []any{
+							map[string]any{
 								"apiVersion": "apps/v1",
 								"kind":       "Deployment",
 								"name":       "test-deployment",
 							},
 						},
 					},
-					"spec": map[string]interface{}{
-						"ports": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"ports": []any{
+							map[string]any{
 								"port": 80,
 							},
 						},
@@ -774,17 +774,17 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with empty managedFields",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":          "test-pod",
 						"namespace":     "default",
-						"managedFields": []interface{}{},
+						"managedFields": []any{},
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -793,16 +793,16 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -816,17 +816,17 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with nil managedFields",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":          "test-pod",
 						"namespace":     "default",
 						"managedFields": nil,
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -835,16 +835,16 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "test-pod",
 						"namespace": "default",
 					},
-					"spec": map[string]interface{}{
-						"containers": []interface{}{
-							map[string]interface{}{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
 								"name":  "test-container",
 								"image": "nginx",
 							},
@@ -858,19 +858,19 @@ func TestRemoveManagedFieldsFromUnstructuredObject(t *testing.T) {
 		{
 			name: "object with minimal fields",
 			obj: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name": "test-pod",
 					},
 				},
 			},
 			expectedResult: &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Pod",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name": "test-pod",
 					},
 				},
@@ -1028,9 +1028,9 @@ func (e *errorReader) Close() error {
 func TestEdgeCases(t *testing.T) {
 	t.Run("very large managedFields", func(t *testing.T) {
 		// Create a large managedFields array
-		largeManagedFields := make([]interface{}, 1000)
+		largeManagedFields := make([]any, 1000)
 		for i := 0; i < 1000; i++ {
-			largeManagedFields[i] = map[string]interface{}{
+			largeManagedFields[i] = map[string]any{
 				"manager":    fmt.Sprintf("manager-%d", i),
 				"operation":  "Update",
 				"apiVersion": "v1",
@@ -1039,10 +1039,10 @@ func TestEdgeCases(t *testing.T) {
 		}
 
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":          "test-pod",
 					"managedFields": largeManagedFields,
 				},
@@ -1057,7 +1057,7 @@ func TestEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, found)
 
-		metadataMap, ok := metadata.(map[string]interface{})
+		metadataMap, ok := metadata.(map[string]any)
 		require.True(t, ok)
 		_, hasManagedFields := metadataMap["managedFields"]
 		assert.False(t, hasManagedFields)
@@ -1065,13 +1065,13 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("metadata with special characters", func(t *testing.T) {
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":          "test-pod-with-special-chars-!@#$%^&*()",
 					"namespace":     "default-namespace",
-					"managedFields": []interface{}{map[string]interface{}{"manager": "kubectl"}},
+					"managedFields": []any{map[string]any{"manager": "kubectl"}},
 				},
 			},
 		}
@@ -1088,11 +1088,11 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("empty object after processing", func(t *testing.T) {
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
-					"managedFields": []interface{}{map[string]interface{}{"manager": "kubectl"}},
+				"metadata": map[string]any{
+					"managedFields": []any{map[string]any{"manager": "kubectl"}},
 				},
 			},
 		}
@@ -1107,13 +1107,13 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("object with only managedFields in metadata", func(t *testing.T) {
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
-					"managedFields": []interface{}{
-						map[string]interface{}{"manager": "kubectl"},
-						map[string]interface{}{"manager": "controller"},
+				"metadata": map[string]any{
+					"managedFields": []any{
+						map[string]any{"manager": "kubectl"},
+						map[string]any{"manager": "controller"},
 					},
 				},
 			},
@@ -1127,14 +1127,14 @@ func TestEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, found)
 
-		metadataMap, ok := metadata.(map[string]interface{})
+		metadataMap, ok := metadata.(map[string]any)
 		require.True(t, ok)
 		assert.Empty(t, metadataMap)
 	})
 
 	t.Run("object with empty Object map", func(t *testing.T) {
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{},
+			Object: map[string]any{},
 		}
 
 		err := removeManagedFieldsFromUnstructuredObject(obj)
@@ -1144,7 +1144,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("object with non-map metadata that causes error", func(t *testing.T) {
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
 				"metadata":   "not-a-map",
@@ -1161,10 +1161,10 @@ func TestEdgeCases(t *testing.T) {
 		// Create an object with a metadata field that will cause an error
 		// This is difficult to trigger in practice, but we can test the error path
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name": "test-pod",
 				},
 			},
@@ -1178,12 +1178,12 @@ func TestEdgeCases(t *testing.T) {
 		// This is difficult to trigger in practice since SetNestedField is quite robust
 		// But we can test the structure
 		obj := &unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Pod",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":          "test-pod",
-					"managedFields": []interface{}{map[string]interface{}{"manager": "kubectl"}},
+					"managedFields": []any{map[string]any{"manager": "kubectl"}},
 				},
 			},
 		}

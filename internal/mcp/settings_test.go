@@ -7,8 +7,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetSettings verifies the HandleGetSettings MCP tool handler.
@@ -115,7 +116,7 @@ func TestHandleUpdateSettings(t *testing.T) {
 				},
 			},
 			setupMock: func(m *MockPortainerClient) {
-				m.On("UpdateSettings", map[string]interface{}{"enableEdgeComputeFeatures": true}).Return(nil)
+				m.On("UpdateSettings", map[string]any{"enableEdgeComputeFeatures": true}).Return(nil)
 			},
 			expectError: false,
 		},
@@ -153,7 +154,7 @@ func TestHandleUpdateSettings(t *testing.T) {
 				},
 			},
 			setupMock: func(m *MockPortainerClient) {
-				m.On("UpdateSettings", map[string]interface{}{"enableEdgeComputeFeatures": false}).Return(assert.AnError)
+				m.On("UpdateSettings", map[string]any{"enableEdgeComputeFeatures": false}).Return(assert.AnError)
 			},
 			expectError:   true,
 			errorContains: "failed to update settings",

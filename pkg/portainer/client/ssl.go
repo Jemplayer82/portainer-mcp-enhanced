@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 

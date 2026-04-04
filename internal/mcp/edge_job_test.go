@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleListEdgeJobs verifies the HandleListEdgeJobs MCP tool handler.
@@ -107,6 +108,13 @@ func TestHandleGetEdgeJob(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {},
 		},
+		{
+			name:        "invalid id (zero)",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{"id": float64(0)}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -178,6 +186,13 @@ func TestHandleGetEdgeJobFile(t *testing.T) {
 			name:        "missing id parameter",
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {},
+		},
+		{
+			name:        "invalid id (zero)",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{"id": float64(0)}
+			},
 		},
 	}
 
@@ -261,14 +276,46 @@ func TestHandleCreateEdgeJob(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:        "missing cronExpression parameter",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name":        "My Job",
+					"fileContent": "content",
+				}
+			},
+		},
+		{
+			name:        "invalid cron expression",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name":           "My Job",
+					"cronExpression": "* * *",
+					"fileContent":    "content",
+				}
+			},
+		},
+		{
+			name:        "missing fileContent parameter",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name":           "My Job",
+					"cronExpression": "* * * * *",
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			if tt.name == "successful creation" {
+			switch tt.name {
+			case "successful creation":
 				mockClient.On("CreateEdgeJob", "My Job", "* * * * *", "#!/bin/bash\necho hello", []int{1, 2}, []int{3}, true).Return(tt.mockID, tt.mockError)
-			} else if tt.name == "api error" {
+			case "api error":
 				mockClient.On("CreateEdgeJob", "Fail", "0 0 * * *", "content", []int{}, []int{}, false).Return(tt.mockID, tt.mockError)
 			}
 
@@ -328,6 +375,13 @@ func TestHandleDeleteEdgeJob(t *testing.T) {
 			name:        "missing id parameter",
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {},
+		},
+		{
+			name:        "invalid id (zero)",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{"id": float64(0)}
+			},
 		},
 	}
 

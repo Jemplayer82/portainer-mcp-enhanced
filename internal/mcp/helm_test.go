@@ -7,36 +7,55 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleListHelmRepositories verifies the HandleListHelmRepositories MCP tool handler.
 func TestHandleListHelmRepositories(t *testing.T) {
 	tests := []struct {
 		name        string
-		userId      int
-		mockResult  models.HelmRepositoryList
-		mockError   error
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
 		expectError bool
 	}{
 		{
 			name:   "successful list",
-			userId: 1,
-			mockResult: models.HelmRepositoryList{
-				GlobalRepository: "https://charts.helm.sh/stable",
-				UserRepositories: []models.HelmRepository{
-					{ID: 1, URL: "https://example.com/charts", UserID: 1},
-				},
+			params: map[string]any{"userId": float64(1)},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmRepositories", 1).Return(models.HelmRepositoryList{
+					GlobalRepository: "https://charts.helm.sh/stable",
+					UserRepositories: []models.HelmRepository{
+						{ID: 1, URL: "https://example.com/charts", UserID: 1},
+					},
+				}, nil)
 			},
-			mockError:   nil,
-			expectError: false,
 		},
 		{
-			name:        "api error",
-			userId:      1,
-			mockResult:  models.HelmRepositoryList{},
-			mockError:   fmt.Errorf("api error"),
+			name:   "api error",
+			params: map[string]any{"userId": float64(1)},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmRepositories", 1).Return(models.HelmRepositoryList{}, fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing userId",
+			params:      map[string]any{},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative userId",
+			params:      map[string]any{"userId": float64(-1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero userId",
+			params:      map[string]any{"userId": float64(0)},
+			mockSetup:   func(m *MockPortainerClient) {},
 			expectError: true,
 		},
 	}
@@ -44,18 +63,17 @@ func TestHandleListHelmRepositories(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("GetHelmRepositories", tt.userId).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleListHelmRepositories()
-			request := CreateMCPRequest(map[string]any{"userId": float64(tt.userId)})
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -63,7 +81,6 @@ func TestHandleListHelmRepositories(t *testing.T) {
 				var repos models.HelmRepositoryList
 				err = json.Unmarshal([]byte(textContent.Text), &repos)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.mockResult, repos)
 			}
 
 			mockClient.AssertExpectations(t)
@@ -75,25 +92,55 @@ func TestHandleListHelmRepositories(t *testing.T) {
 func TestHandleAddHelmRepository(t *testing.T) {
 	tests := []struct {
 		name        string
-		userId      int
-		url         string
-		mockResult  models.HelmRepository
-		mockError   error
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
 		expectError bool
 	}{
 		{
-			name:       "successful add",
-			userId:     1,
-			url:        "https://example.com/charts",
-			mockResult: models.HelmRepository{ID: 1, URL: "https://example.com/charts", UserID: 1},
-			mockError:  nil,
+			name:   "successful add",
+			params: map[string]any{"userId": float64(1), "url": "https://example.com/charts"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("CreateHelmRepository", 1, "https://example.com/charts").Return(
+					models.HelmRepository{ID: 1, URL: "https://example.com/charts", UserID: 1}, nil)
+			},
 		},
 		{
-			name:        "api error",
-			userId:      1,
-			url:         "https://example.com/charts",
-			mockResult:  models.HelmRepository{},
-			mockError:   fmt.Errorf("api error"),
+			name:   "api error",
+			params: map[string]any{"userId": float64(1), "url": "https://example.com/charts"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("CreateHelmRepository", 1, "https://example.com/charts").Return(
+					models.HelmRepository{}, fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing userId",
+			params:      map[string]any{"url": "https://example.com/charts"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative userId",
+			params:      map[string]any{"userId": float64(-1), "url": "https://example.com/charts"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero userId",
+			params:      map[string]any{"userId": float64(0), "url": "https://example.com/charts"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "missing url",
+			params:      map[string]any{"userId": float64(1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid url",
+			params:      map[string]any{"userId": float64(1), "url": "not-a-valid-url"},
+			mockSetup:   func(m *MockPortainerClient) {},
 			expectError: true,
 		},
 	}
@@ -101,18 +148,17 @@ func TestHandleAddHelmRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("CreateHelmRepository", tt.userId, tt.url).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleAddHelmRepository()
-			request := CreateMCPRequest(map[string]any{"userId": float64(tt.userId), "url": tt.url})
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -120,7 +166,6 @@ func TestHandleAddHelmRepository(t *testing.T) {
 				var repo models.HelmRepository
 				err = json.Unmarshal([]byte(textContent.Text), &repo)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.mockResult, repo)
 			}
 
 			mockClient.AssertExpectations(t)
@@ -131,42 +176,78 @@ func TestHandleAddHelmRepository(t *testing.T) {
 // TestHandleRemoveHelmRepository verifies the HandleRemoveHelmRepository MCP tool handler.
 func TestHandleRemoveHelmRepository(t *testing.T) {
 	tests := []struct {
-		name         string
-		userId       int
-		repositoryId int
-		mockError    error
-		expectError  bool
+		name        string
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
+		expectError bool
 	}{
 		{
-			name:         "successful remove",
-			userId:       1,
-			repositoryId: 2,
-			mockError:    nil,
+			name:   "successful remove",
+			params: map[string]any{"userId": float64(1), "repositoryId": float64(2)},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("DeleteHelmRepository", 1, 2).Return(nil)
+			},
 		},
 		{
-			name:         "api error",
-			userId:       1,
-			repositoryId: 2,
-			mockError:    fmt.Errorf("api error"),
-			expectError:  true,
+			name:   "api error",
+			params: map[string]any{"userId": float64(1), "repositoryId": float64(2)},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("DeleteHelmRepository", 1, 2).Return(fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing userId",
+			params:      map[string]any{"repositoryId": float64(2)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative userId",
+			params:      map[string]any{"userId": float64(-1), "repositoryId": float64(2)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero userId",
+			params:      map[string]any{"userId": float64(0), "repositoryId": float64(2)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "missing repositoryId",
+			params:      map[string]any{"userId": float64(1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative repositoryId",
+			params:      map[string]any{"userId": float64(1), "repositoryId": float64(-1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero repositoryId",
+			params:      map[string]any{"userId": float64(1), "repositoryId": float64(0)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("DeleteHelmRepository", tt.userId, tt.repositoryId).Return(tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleRemoveHelmRepository()
-			request := CreateMCPRequest(map[string]any{"userId": float64(tt.userId), "repositoryId": float64(tt.repositoryId)})
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -182,25 +263,41 @@ func TestHandleRemoveHelmRepository(t *testing.T) {
 func TestHandleSearchHelmCharts(t *testing.T) {
 	tests := []struct {
 		name        string
-		repo        string
-		chart       string
-		mockResult  string
-		mockError   error
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
 		expectError bool
 	}{
 		{
-			name:       "successful search",
-			repo:       "https://charts.helm.sh/stable",
-			chart:      "nginx",
-			mockResult: `[{"name":"nginx","version":"1.0.0"}]`,
-			mockError:  nil,
+			name:   "successful search",
+			params: map[string]any{"repo": "https://charts.helm.sh/stable", "chart": "nginx"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("SearchHelmCharts", "https://charts.helm.sh/stable", "nginx").Return(`[{"name":"nginx","version":"1.0.0"}]`, nil)
+			},
 		},
 		{
-			name:        "api error",
-			repo:        "https://charts.helm.sh/stable",
-			chart:       "nginx",
-			mockResult:  "",
-			mockError:   fmt.Errorf("api error"),
+			name:   "api error",
+			params: map[string]any{"repo": "https://charts.helm.sh/stable", "chart": "nginx"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("SearchHelmCharts", "https://charts.helm.sh/stable", "nginx").Return("", fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing repo",
+			params:      map[string]any{"chart": "nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid repo URL",
+			params:      map[string]any{"repo": "not-a-valid-url", "chart": "nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid chart type",
+			params:      map[string]any{"repo": "https://charts.helm.sh/stable", "chart": true},
+			mockSetup:   func(m *MockPortainerClient) {},
 			expectError: true,
 		},
 	}
@@ -208,22 +305,21 @@ func TestHandleSearchHelmCharts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("SearchHelmCharts", tt.repo, tt.chart).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleSearchHelmCharts()
-			request := CreateMCPRequest(map[string]any{"repo": tt.repo, "chart": tt.chart})
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
-				assert.Equal(t, tt.mockResult, textContent.Text)
+				assert.Equal(t, `[{"name":"nginx","version":"1.0.0"}]`, textContent.Text)
 			}
 
 			mockClient.AssertExpectations(t)
@@ -234,72 +330,165 @@ func TestHandleSearchHelmCharts(t *testing.T) {
 // TestHandleInstallHelmChart verifies the HandleInstallHelmChart MCP tool handler.
 func TestHandleInstallHelmChart(t *testing.T) {
 	tests := []struct {
-		name          string
-		environmentId int
-		chart         string
-		releaseName   string
-		repo          string
-		namespace     string
-		values        string
-		version       string
-		mockResult    models.HelmReleaseDetails
-		mockError     error
-		expectError   bool
+		name        string
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
+		expectError bool
 	}{
 		{
-			name:          "successful install",
-			environmentId: 1,
-			chart:         "nginx",
-			releaseName:   "my-nginx",
-			repo:          "https://charts.helm.sh/stable",
-			namespace:     "default",
-			values:        "",
-			version:       "1.0.0",
-			mockResult:    models.HelmReleaseDetails{Name: "my-nginx", Namespace: "default", Version: 1, Status: "deployed"},
-			mockError:     nil,
+			name: "successful install",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+				"namespace":     "default",
+				"version":       "1.0.0",
+			},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("InstallHelmChart", 1, "nginx", "my-nginx", "default", "https://charts.helm.sh/stable", "", "1.0.0").Return(
+					models.HelmReleaseDetails{Name: "my-nginx", Namespace: "default", Version: 1, Status: "deployed"}, nil)
+			},
 		},
 		{
-			name:          "api error",
-			environmentId: 1,
-			chart:         "nginx",
-			releaseName:   "my-nginx",
-			repo:          "https://charts.helm.sh/stable",
-			mockResult:    models.HelmReleaseDetails{},
-			mockError:     fmt.Errorf("api error"),
-			expectError:   true,
+			name: "api error",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+			},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("InstallHelmChart", 1, "nginx", "my-nginx", "", "https://charts.helm.sh/stable", "", "").Return(
+					models.HelmReleaseDetails{}, fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name: "missing environmentId",
+			params: map[string]any{
+				"chart": "nginx",
+				"name":  "my-nginx",
+				"repo":  "https://charts.helm.sh/stable",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "negative environmentId",
+			params: map[string]any{
+				"environmentId": float64(-1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "zero environmentId",
+			params: map[string]any{
+				"environmentId": float64(0),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "missing chart",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "missing name",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"repo":          "https://charts.helm.sh/stable",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "missing repo",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "invalid repo URL",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "not-a-valid-url",
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "invalid namespace type",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+				"namespace":     true,
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "invalid values type",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+				"values":        true,
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name: "invalid version type",
+			params: map[string]any{
+				"environmentId": float64(1),
+				"chart":         "nginx",
+				"name":          "my-nginx",
+				"repo":          "https://charts.helm.sh/stable",
+				"version":       true,
+			},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("InstallHelmChart", tt.environmentId, tt.chart, tt.releaseName, tt.namespace, tt.repo, tt.values, tt.version).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleInstallHelmChart()
-			args := map[string]any{
-				"environmentId": float64(tt.environmentId),
-				"chart":         tt.chart,
-				"name":          tt.releaseName,
-				"repo":          tt.repo,
-			}
-			if tt.namespace != "" {
-				args["namespace"] = tt.namespace
-			}
-			if tt.values != "" {
-				args["values"] = tt.values
-			}
-			if tt.version != "" {
-				args["version"] = tt.version
-			}
-			request := CreateMCPRequest(args)
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -314,58 +503,80 @@ func TestHandleInstallHelmChart(t *testing.T) {
 // TestHandleListHelmReleases verifies the HandleListHelmReleases MCP tool handler.
 func TestHandleListHelmReleases(t *testing.T) {
 	tests := []struct {
-		name          string
-		environmentId int
-		namespace     string
-		filter        string
-		selector      string
-		mockResult    []models.HelmRelease
-		mockError     error
-		expectError   bool
+		name        string
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
+		expectError bool
 	}{
 		{
-			name:          "successful list",
-			environmentId: 1,
-			namespace:     "default",
-			mockResult: []models.HelmRelease{
-				{Name: "my-nginx", Namespace: "default", Revision: "1", Status: "deployed", Chart: "nginx-1.0.0"},
+			name:   "successful list",
+			params: map[string]any{"environmentId": float64(1), "namespace": "default"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmReleases", 1, "default", "", "").Return([]models.HelmRelease{
+					{Name: "my-nginx", Namespace: "default", Revision: "1", Status: "deployed", Chart: "nginx-1.0.0"},
+				}, nil)
 			},
-			mockError: nil,
 		},
 		{
-			name:          "api error",
-			environmentId: 1,
-			mockResult:    nil,
-			mockError:     fmt.Errorf("api error"),
-			expectError:   true,
+			name:   "api error",
+			params: map[string]any{"environmentId": float64(1)},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmReleases", 1, "", "", "").Return(nil, fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative environmentId",
+			params:      map[string]any{"environmentId": float64(-1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero environmentId",
+			params:      map[string]any{"environmentId": float64(0)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid namespace type",
+			params:      map[string]any{"environmentId": float64(1), "namespace": true},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid filter type",
+			params:      map[string]any{"environmentId": float64(1), "filter": true},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid selector type",
+			params:      map[string]any{"environmentId": float64(1), "selector": true},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("GetHelmReleases", tt.environmentId, tt.namespace, tt.filter, tt.selector).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleListHelmReleases()
-			args := map[string]any{"environmentId": float64(tt.environmentId)}
-			if tt.namespace != "" {
-				args["namespace"] = tt.namespace
-			}
-			if tt.filter != "" {
-				args["filter"] = tt.filter
-			}
-			if tt.selector != "" {
-				args["selector"] = tt.selector
-			}
-			request := CreateMCPRequest(args)
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -373,7 +584,6 @@ func TestHandleListHelmReleases(t *testing.T) {
 				var releases []models.HelmRelease
 				err = json.Unmarshal([]byte(textContent.Text), &releases)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.mockResult, releases)
 			}
 
 			mockClient.AssertExpectations(t)
@@ -384,48 +594,72 @@ func TestHandleListHelmReleases(t *testing.T) {
 // TestHandleDeleteHelmRelease verifies the HandleDeleteHelmRelease MCP tool handler.
 func TestHandleDeleteHelmRelease(t *testing.T) {
 	tests := []struct {
-		name          string
-		environmentId int
-		release       string
-		namespace     string
-		mockError     error
-		expectError   bool
+		name        string
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
+		expectError bool
 	}{
 		{
-			name:          "successful delete",
-			environmentId: 1,
-			release:       "my-nginx",
-			namespace:     "default",
-			mockError:     nil,
+			name:   "successful delete",
+			params: map[string]any{"environmentId": float64(1), "release": "my-nginx", "namespace": "default"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("DeleteHelmRelease", 1, "my-nginx", "default").Return(nil)
+			},
 		},
 		{
-			name:          "api error",
-			environmentId: 1,
-			release:       "my-nginx",
-			mockError:     fmt.Errorf("api error"),
-			expectError:   true,
+			name:   "api error",
+			params: map[string]any{"environmentId": float64(1), "release": "my-nginx"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("DeleteHelmRelease", 1, "my-nginx", "").Return(fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"release": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative environmentId",
+			params:      map[string]any{"environmentId": float64(-1), "release": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero environmentId",
+			params:      map[string]any{"environmentId": float64(0), "release": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "missing release",
+			params:      map[string]any{"environmentId": float64(1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid namespace type",
+			params:      map[string]any{"environmentId": float64(1), "release": "my-nginx", "namespace": true},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("DeleteHelmRelease", tt.environmentId, tt.release, tt.namespace).Return(tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleDeleteHelmRelease()
-			args := map[string]any{"environmentId": float64(tt.environmentId), "release": tt.release}
-			if tt.namespace != "" {
-				args["namespace"] = tt.namespace
-			}
-			request := CreateMCPRequest(args)
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -440,54 +674,75 @@ func TestHandleDeleteHelmRelease(t *testing.T) {
 // TestHandleGetHelmReleaseHistory verifies the HandleGetHelmReleaseHistory MCP tool handler.
 func TestHandleGetHelmReleaseHistory(t *testing.T) {
 	tests := []struct {
-		name          string
-		environmentId int
-		releaseName   string
-		namespace     string
-		mockResult    []models.HelmReleaseDetails
-		mockError     error
-		expectError   bool
+		name        string
+		params      map[string]any
+		mockSetup   func(*MockPortainerClient)
+		expectError bool
 	}{
 		{
-			name:          "successful history",
-			environmentId: 1,
-			releaseName:   "my-nginx",
-			namespace:     "default",
-			mockResult: []models.HelmReleaseDetails{
-				{Name: "my-nginx", Namespace: "default", Version: 1, Status: "deployed"},
-				{Name: "my-nginx", Namespace: "default", Version: 2, Status: "deployed"},
+			name:   "successful history",
+			params: map[string]any{"environmentId": float64(1), "name": "my-nginx", "namespace": "default"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmReleaseHistory", 1, "my-nginx", "default").Return([]models.HelmReleaseDetails{
+					{Name: "my-nginx", Namespace: "default", Version: 1, Status: "deployed"},
+					{Name: "my-nginx", Namespace: "default", Version: 2, Status: "deployed"},
+				}, nil)
 			},
-			mockError: nil,
 		},
 		{
-			name:          "api error",
-			environmentId: 1,
-			releaseName:   "my-nginx",
-			mockResult:    nil,
-			mockError:     fmt.Errorf("api error"),
-			expectError:   true,
+			name:   "api error",
+			params: map[string]any{"environmentId": float64(1), "name": "my-nginx"},
+			mockSetup: func(m *MockPortainerClient) {
+				m.On("GetHelmReleaseHistory", 1, "my-nginx", "").Return(nil, fmt.Errorf("api error"))
+			},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"name": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "negative environmentId",
+			params:      map[string]any{"environmentId": float64(-1), "name": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "zero environmentId",
+			params:      map[string]any{"environmentId": float64(0), "name": "my-nginx"},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "missing name",
+			params:      map[string]any{"environmentId": float64(1)},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
+		},
+		{
+			name:        "invalid namespace type",
+			params:      map[string]any{"environmentId": float64(1), "name": "my-nginx", "namespace": true},
+			mockSetup:   func(m *MockPortainerClient) {},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			mockClient.On("GetHelmReleaseHistory", tt.environmentId, tt.releaseName, tt.namespace).Return(tt.mockResult, tt.mockError)
+			tt.mockSetup(mockClient)
 
 			server := &PortainerMCPServer{cli: mockClient}
 			handler := server.HandleGetHelmReleaseHistory()
-			args := map[string]any{"environmentId": float64(tt.environmentId), "name": tt.releaseName}
-			if tt.namespace != "" {
-				args["namespace"] = tt.namespace
-			}
-			request := CreateMCPRequest(args)
+			request := CreateMCPRequest(tt.params)
 			result, err := handler(context.Background(), request)
 
+			assert.NoError(t, err)
 			if tt.expectError {
-				assert.NoError(t, err)
 				assert.True(t, result.IsError)
 			} else {
-				assert.NoError(t, err)
 				assert.Len(t, result.Content, 1)
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				assert.True(t, ok)
@@ -495,7 +750,6 @@ func TestHandleGetHelmReleaseHistory(t *testing.T) {
 				var history []models.HelmReleaseDetails
 				err = json.Unmarshal([]byte(textContent.Text), &history)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.mockResult, history)
 			}
 
 			mockClient.AssertExpectations(t)

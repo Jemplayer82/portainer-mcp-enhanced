@@ -10,8 +10,9 @@ import (
 
 	"github.com/portainer/client-api-go/v2/client"
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestProxyKubernetesRequest verifies proxy kubernetes request behavior.
@@ -118,7 +119,7 @@ func TestProxyKubernetesRequest(t *testing.T) {
 
 				// Read and verify the response body
 				if assert.NotNil(t, resp.Body) { // Ensure body is not nil before reading
-					defer resp.Body.Close()
+					defer func() { _ = resp.Body.Close() }()
 					bodyBytes, readErr := io.ReadAll(resp.Body)
 					assert.NoError(t, readErr)
 					assert.Equal(t, tt.expectedRespBody, string(bodyBytes))
@@ -240,14 +241,14 @@ func TestGetKubernetesConfig(t *testing.T) {
 	tests := []struct {
 		name          string
 		envID         int
-		mockResult    interface{}
+		mockResult    any
 		mockError     error
 		expectedError bool
 	}{
 		{
 			name:       "successful retrieval",
 			envID:      1,
-			mockResult: map[string]interface{}{"apiVersion": "v1", "kind": "Config"},
+			mockResult: map[string]any{"apiVersion": "v1", "kind": "Config"},
 		},
 		{
 			name:          "API error",

@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleKubernetesProxy_ParameterValidation verifies the HandleKubernetesProxy_ParameterValidation MCP tool handler.
@@ -299,6 +300,22 @@ func TestHandleKubernetesProxyStripped_ParameterValidation(t *testing.T) {
 			expectedErrorMsg: "environmentId is required",
 		},
 		{
+			name: "zero environmentId",
+			inputParams: map[string]any{
+				"environmentId":     float64(0),
+				"kubernetesAPIPath": "/api/v1/pods",
+			},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
+			name: "negative environmentId",
+			inputParams: map[string]any{
+				"environmentId":     float64(-1),
+				"kubernetesAPIPath": "/api/v1/pods",
+			},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
 			name: "missing kubernetesAPIPath",
 			inputParams: map[string]any{
 				"environmentId": float64(1),
@@ -312,6 +329,14 @@ func TestHandleKubernetesProxyStripped_ParameterValidation(t *testing.T) {
 				"kubernetesAPIPath": "api/v1/pods",
 			},
 			expectedErrorMsg: "kubernetesAPIPath must start with a leading slash",
+		},
+		{
+			name: "invalid kubernetesAPIPath (path traversal)",
+			inputParams: map[string]any{
+				"environmentId":     float64(1),
+				"kubernetesAPIPath": "/api/v1/../secrets",
+			},
+			expectedErrorMsg: "kubernetesAPIPath must not contain path traversal sequences",
 		},
 		{
 			name: "invalid queryParams type (not an array)",
@@ -629,6 +654,16 @@ func TestHandleGetKubernetesDashboard(t *testing.T) {
 			expectedErrorMsg: "environmentId is required",
 		},
 		{
+			name:             "zero environmentId",
+			inputParams:      map[string]any{"environmentId": float64(0)},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
+			name:             "negative environmentId",
+			inputParams:      map[string]any{"environmentId": float64(-1)},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
 			name:        "successful dashboard retrieval",
 			inputParams: map[string]any{"environmentId": float64(1)},
 			mockDashboard: models.KubernetesDashboard{
@@ -654,7 +689,7 @@ func TestHandleGetKubernetesDashboard(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := new(MockPortainerClient)
 
-			if _, ok := tt.inputParams["environmentId"]; ok {
+			if envID, ok := tt.inputParams["environmentId"]; ok && int(envID.(float64)) > 0 {
 				mockClient.On("GetKubernetesDashboard", int(tt.inputParams["environmentId"].(float64))).
 					Return(tt.mockDashboard, tt.mockErr)
 			}
@@ -700,6 +735,16 @@ func TestHandleListKubernetesNamespaces(t *testing.T) {
 			expectedErrorMsg: "environmentId is required",
 		},
 		{
+			name:             "zero environmentId",
+			inputParams:      map[string]any{"environmentId": float64(0)},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
+			name:             "negative environmentId",
+			inputParams:      map[string]any{"environmentId": float64(-1)},
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
 			name:        "successful namespace listing",
 			inputParams: map[string]any{"environmentId": float64(1)},
 			mockNamespaces: []models.KubernetesNamespace{
@@ -734,7 +779,7 @@ func TestHandleListKubernetesNamespaces(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := new(MockPortainerClient)
 
-			if _, ok := tt.inputParams["environmentId"]; ok {
+			if envID, ok := tt.inputParams["environmentId"]; ok && int(envID.(float64)) > 0 {
 				mockClient.On("GetKubernetesNamespaces", int(tt.inputParams["environmentId"].(float64))).
 					Return(tt.mockNamespaces, tt.mockErr)
 			}
@@ -769,7 +814,7 @@ func TestHandleGetKubernetesConfig(t *testing.T) {
 	tests := []struct {
 		name             string
 		inputParams      map[string]any
-		mockConfig       interface{}
+		mockConfig       any
 		mockErr          error
 		expectedErrorMsg string
 		expectedResult   string
@@ -781,6 +826,18 @@ func TestHandleGetKubernetesConfig(t *testing.T) {
 			expectedErrorMsg: "environmentId is required",
 		},
 		{
+			name:             "zero environmentId",
+			inputParams:      map[string]any{"environmentId": float64(0)},
+			mockConfig:       nil,
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
+			name:             "negative environmentId",
+			inputParams:      map[string]any{"environmentId": float64(-1)},
+			mockConfig:       nil,
+			expectedErrorMsg: "environmentId must be a positive integer",
+		},
+		{
 			name:           "successful config retrieval as string",
 			inputParams:    map[string]any{"environmentId": float64(1)},
 			mockConfig:     "apiVersion: v1\nclusters: []\n",
@@ -789,7 +846,7 @@ func TestHandleGetKubernetesConfig(t *testing.T) {
 		{
 			name:        "successful config retrieval as map",
 			inputParams: map[string]any{"environmentId": float64(1)},
-			mockConfig: map[string]interface{}{
+			mockConfig: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Config",
 			},
@@ -808,7 +865,7 @@ func TestHandleGetKubernetesConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := new(MockPortainerClient)
 
-			if _, ok := tt.inputParams["environmentId"]; ok {
+			if envID, ok := tt.inputParams["environmentId"]; ok && int(envID.(float64)) > 0 {
 				mockClient.On("GetKubernetesConfig", int(tt.inputParams["environmentId"].(float64))).
 					Return(tt.mockConfig, tt.mockErr)
 			}
@@ -840,20 +897,20 @@ func TestHandleGetKubernetesConfig(t *testing.T) {
 
 // TestHandleKubernetesProxy_ClosesResponseBody verifies the HandleKubernetesProxy_ClosesResponseBody MCP tool handler.
 func TestHandleKubernetesProxy_ClosesResponseBody(t *testing.T) {
-tc := &trackingCloser{Reader: strings.NewReader(`{"status":"ok"}`)}
-mockClient := new(MockPortainerClient)
-mockClient.On("ProxyKubernetesRequest", mock.AnythingOfType("models.KubernetesProxyRequestOptions")).
-Return(&http.Response{StatusCode: http.StatusOK, Body: tc}, nil)
+	tc := &trackingCloser{Reader: strings.NewReader(`{"status":"ok"}`)}
+	mockClient := new(MockPortainerClient)
+	mockClient.On("ProxyKubernetesRequest", mock.AnythingOfType("models.KubernetesProxyRequestOptions")).
+		Return(&http.Response{StatusCode: http.StatusOK, Body: tc}, nil)
 
-server := &PortainerMCPServer{cli: mockClient}
-request := CreateMCPRequest(map[string]any{
-"environmentId":     float64(1),
-"kubernetesAPIPath": "/api/v1/namespaces",
-"method":            "GET",
-})
+	server := &PortainerMCPServer{cli: mockClient}
+	request := CreateMCPRequest(map[string]any{
+		"environmentId":     float64(1),
+		"kubernetesAPIPath": "/api/v1/namespaces",
+		"method":            "GET",
+	})
 
-handler := server.HandleKubernetesProxy()
-_, err := handler(context.Background(), request)
-assert.NoError(t, err)
-assert.True(t, tc.closed, "response body should be closed after handler returns")
+	handler := server.HandleKubernetesProxy()
+	_, err := handler(context.Background(), request)
+	assert.NoError(t, err)
+	assert.True(t, tc.closed, "response body should be closed after handler returns")
 }

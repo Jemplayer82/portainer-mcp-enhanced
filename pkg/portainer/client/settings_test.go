@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestGetSettings verifies get settings behavior.
@@ -146,19 +147,19 @@ func TestGetSettings(t *testing.T) {
 func TestUpdateSettings(t *testing.T) {
 	tests := []struct {
 		name          string
-		settings      map[string]interface{}
+		settings      map[string]any
 		mockError     error
 		expectedError bool
 	}{
 		{
 			name: "successful update",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"EnableTelemetry": true,
 			},
 		},
 		{
 			name: "API error",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"EnableTelemetry": false,
 			},
 			mockError:     errors.New("forbidden"),

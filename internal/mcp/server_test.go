@@ -196,3 +196,40 @@ func TestAddToolIfExists(t *testing.T) {
 		})
 	}
 }
+
+// TestMajorMinor verifies majorMinor behavior, including the single-component branch.
+func TestMajorMinor(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{
+			name:    "full version extracts major.minor",
+			version: "2.31.2",
+			want:    "2.31",
+		},
+		{
+			name:    "two-component version returns major.minor",
+			version: "2.31",
+			want:    "2.31",
+		},
+		{
+			name:    "single-component version returns version unchanged",
+			version: "2",
+			want:    "2",
+		},
+		{
+			name:    "empty string returns empty string",
+			version: "",
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := majorMinor(tt.version)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

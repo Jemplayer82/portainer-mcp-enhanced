@@ -99,7 +99,7 @@ type PortainerAPIClient interface {
 	GetDockerDashboard(environmentId int64) (*apimodels.DockerDashboardResponse, error)
 	GetKubernetesDashboard(environmentId int64) (*apimodels.KubernetesK8sDashboard, error)
 	GetKubernetesNamespaces(environmentId int64) ([]*apimodels.PortainerK8sNamespaceInfo, error)
-	GetKubernetesConfig(environmentId int64) (interface{}, error)
+	GetKubernetesConfig(environmentId int64) (any, error)
 	StackInspect(id int64) (*apimodels.PortainereeStack, error)
 	StackDelete(id int64, endpointID int64, removeVolumes bool) error
 	StackFileInspect(id int64) (string, error)

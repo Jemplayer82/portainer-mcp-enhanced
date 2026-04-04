@@ -43,14 +43,18 @@ type Annotations struct {
 	OpenWorldHint   bool   `yaml:"openWorldHint"`
 }
 
-// LoadToolsFromYAML loads tool definitions from a YAML file
-// It returns the tools and the version of the tools.yaml file
+// LoadToolsFromYAML loads tool definitions from a YAML file on disk.
 func LoadToolsFromYAML(filePath string, minimumVersion string) (map[string]mcp.Tool, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tools file: %w", err)
 	}
+	return LoadToolsFromBytes(data, minimumVersion)
+}
 
+// LoadToolsFromBytes loads tool definitions from raw YAML bytes.
+// Use this with embedded data to avoid filesystem writes.
+func LoadToolsFromBytes(data []byte, minimumVersion string) (map[string]mcp.Tool, error) {
 	var config ToolsConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse tools YAML: %w", err)

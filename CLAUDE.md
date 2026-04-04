@@ -49,12 +49,12 @@ cmd/
   portainer-mcp/          CLI entry point, flags, version via ldflags
   token-count/            Token counting utility for tools YAML
 internal/
-  mcp/                    Core: server, handlers, metatool system (22 domain files)
+  mcp/                    Core: server, handlers, metatool system, client_interfaces.go
   tooldef/                YAML tool definitions → MCP tool structs
   k8sutil/                Kubernetes response stripping utilities
 pkg/
   portainer/
-    client/               HTTP client wrapper for Portainer API (24 domain files)
+    client/               HTTP client wrapper for Portainer API (adapter.go + 11 adapter_*.go domain files)
     models/               Local data models + Convert*() from raw API models (21 files)
   toolgen/                Tool YAML code generation + parameter parsing
 tests/
@@ -89,14 +89,14 @@ func (s *PortainerMCPServer) HandleXxx() server.ToolHandlerFunc {
 - **Client Wrapper** (`pkg/portainer/client`) — transforms between raw and local models
 
 ### Interface-Based Client
-`PortainerClient` interface in `server.go` (~170 methods) is the contract between MCP handlers and the API. All handlers use `s.cli` (never direct HTTP calls). Tests mock this interface.
+`PortainerClient` interface in `server.go` composes 18 domain-specific sub-interfaces defined in `client_interfaces.go` (e.g., `TagClient`, `EnvironmentClient`, `StackClient`, `DockerClient`, `HelmClient`). All handlers use `s.cli` (never direct HTTP calls). Tests mock this interface.
 
 ### Docker/K8s Proxy
-Direct API pass-through with 10MB response size limit (`maxProxyResponseSize`). Handlers in `docker.go` and `kubernetes.go`.
+Shared parameter parsing via `parseProxyParams()` and `readProxyResponse()` in `utils.go`. Direct API pass-through with 10MB response size limit (`maxProxyResponseSize`). Path traversal (`..`) is rejected. Handlers in `docker.go` and `kubernetes.go`.
 
 ### Version Validation
 - `MinimumToolsVersion = "v1.0"` — minimum tools.yaml version
-- `SupportedPortainerVersion = "2.31.2"` — required Portainer version (major.minor must match)
+- `SupportedPortainerVersion = "2.39.1"` — required Portainer version (major.minor must match)
 
 ## Code Style
 
@@ -121,7 +121,7 @@ Direct API pass-through with 10MB response size limit (`maxProxyResponseSize`). 
 5. **Add handler** in `internal/mcp/<domain>.go` — implement `HandleMyAction()`
 6. **Register** in `Add<Domain>Features()` via `s.addToolIfExists(ToolMyAction, s.HandleMyAction())`
 7. **Add to meta-tool** in `metatool_registry.go` — append to appropriate category's `actions` slice
-8. **Update `PortainerClient` interface** in `server.go` if new client method added
+8. **Update domain interface** in `client_interfaces.go` if new client method added
 9. **Write tests** in `internal/mcp/<domain>_test.go` — table-driven with mock client
 10. **Update docs** in `docs/`
 

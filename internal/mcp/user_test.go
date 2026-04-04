@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetUsers verifies the HandleGetUsers MCP tool handler.
@@ -124,6 +125,19 @@ func TestHandleUpdateUserRole(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				request.Params.Arguments = map[string]any{
+					"role": "admin",
+				}
+			},
+		},
+		{
+			name:        "invalid id (zero)",
+			inputID:     0,
+			inputRole:   "admin",
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":   float64(0),
 					"role": "admin",
 				}
 			},
@@ -266,6 +280,25 @@ func TestHandleCreateUser(t *testing.T) {
 			},
 		},
 		{
+			name:        "missing password parameter",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"username": "testuser",
+				}
+			},
+		},
+		{
+			name:        "missing role parameter",
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"username": "testuser",
+					"password": "password123",
+				}
+			},
+		},
+		{
 			name:        "invalid role",
 			username:    "testuser",
 			password:    "password123",
@@ -373,6 +406,18 @@ func TestHandleGetUser(t *testing.T) {
 				// No parameters
 			},
 		},
+		{
+			name:        "invalid id (zero)",
+			inputID:     0,
+			mockUser:    models.User{},
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -459,6 +504,16 @@ func TestHandleDeleteUser(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				// No parameters
+			},
+		},
+		{
+			name:        "invalid id zero",
+			inputID:     0,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
 			},
 		},
 	}

@@ -7,8 +7,9 @@ import (
 	"flag"
 	"os"
 
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 	"github.com/rs/zerolog/log"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/toolgen"
 )
 
 // AnthropicTool defines the structure expected by the Anthropic API

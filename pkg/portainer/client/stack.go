@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/utils"
 )
@@ -128,13 +129,12 @@ func (c *PortainerClient) InspectStack(id int) (models.RegularStack, error) {
 //
 // Parameters:
 //   - id: The ID of the stack to delete
-//   - endpointID: The environment ID where the stack is deployed
-//   - removeVolumes: Whether to remove associated volumes
+//   - opts: Deletion options (environment ID, volume removal)
 //
 // Returns:
 //   - An error if the operation fails
-func (c *PortainerClient) DeleteStack(id int, endpointID int, removeVolumes bool) error {
-	err := c.cli.StackDelete(int64(id), int64(endpointID), removeVolumes)
+func (c *PortainerClient) DeleteStack(id int, opts models.DeleteStackOptions) error {
+	err := c.cli.StackDelete(int64(id), int64(opts.EndpointID), opts.RemoveVolumes)
 	if err != nil {
 		return fmt.Errorf("failed to delete stack: %w", err)
 	}
@@ -163,20 +163,18 @@ func (c *PortainerClient) InspectStackFile(id int) (string, error) {
 //
 // Parameters:
 //   - id: The ID of the stack to update
-//   - endpointID: The environment ID where the stack is deployed
-//   - referenceName: The git reference name (branch/tag)
-//   - prune: Whether to prune removed services
+//   - opts: Git update options (environment ID, reference name, prune)
 //
 // Returns:
 //   - The updated RegularStack
 //   - An error if the operation fails
-func (c *PortainerClient) UpdateStackGit(id int, endpointID int, referenceName string, prune bool) (models.RegularStack, error) {
+func (c *PortainerClient) UpdateStackGit(id int, opts models.UpdateStackGitOptions) (models.RegularStack, error) {
 	body := &apimodels.StacksStackGitUpdatePayload{
-		RepositoryReferenceName: referenceName,
-		Prune:                   prune,
+		RepositoryReferenceName: opts.ReferenceName,
+		Prune:                   opts.Prune,
 	}
 
-	raw, err := c.cli.StackUpdateGit(int64(id), int64(endpointID), body)
+	raw, err := c.cli.StackUpdateGit(int64(id), int64(opts.EndpointID), body)
 	if err != nil {
 		return models.RegularStack{}, fmt.Errorf("failed to update stack git: %w", err)
 	}
@@ -188,20 +186,18 @@ func (c *PortainerClient) UpdateStackGit(id int, endpointID int, referenceName s
 //
 // Parameters:
 //   - id: The ID of the stack to redeploy
-//   - endpointID: The environment ID where the stack is deployed
-//   - pullImage: Whether to pull the latest images
-//   - prune: Whether to prune removed services
+//   - opts: Redeployment options (environment ID, pull image, prune)
 //
 // Returns:
 //   - The redeployed RegularStack
 //   - An error if the operation fails
-func (c *PortainerClient) RedeployStackGit(id int, endpointID int, pullImage bool, prune bool) (models.RegularStack, error) {
+func (c *PortainerClient) RedeployStackGit(id int, opts models.RedeployStackGitOptions) (models.RegularStack, error) {
 	body := &apimodels.StacksStackGitRedployPayload{
-		PullImage: pullImage,
-		Prune:     prune,
+		PullImage: opts.PullImage,
+		Prune:     opts.Prune,
 	}
 
-	raw, err := c.cli.StackGitRedeploy(int64(id), int64(endpointID), body)
+	raw, err := c.cli.StackGitRedeploy(int64(id), int64(opts.EndpointID), body)
 	if err != nil {
 		return models.RegularStack{}, fmt.Errorf("failed to redeploy stack: %w", err)
 	}

@@ -11,9 +11,10 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 func createMockHttpResponse(statusCode int, body string) *http.Response {
@@ -365,12 +366,19 @@ func TestHandleGetDockerDashboard(t *testing.T) {
 			inputParams: map[string]any{},
 			expectError: true,
 		},
+		{
+			name:          "environmentId zero triggers validatePositiveID error",
+			inputParams:   map[string]any{"environmentId": float64(0)},
+			mockDashboard: models.DockerDashboard{},
+			mockError:     nil,
+			expectError:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
-			if _, ok := tt.inputParams["environmentId"]; ok {
+			if envId, ok := tt.inputParams["environmentId"]; ok && int(envId.(float64)) > 0 {
 				mockClient.On("GetDockerDashboard", int(tt.inputParams["environmentId"].(float64))).Return(tt.mockDashboard, tt.mockError)
 			}
 
@@ -404,20 +412,20 @@ func TestHandleGetDockerDashboard(t *testing.T) {
 
 // TestHandleDockerProxy_ClosesResponseBody verifies the HandleDockerProxy_ClosesResponseBody MCP tool handler.
 func TestHandleDockerProxy_ClosesResponseBody(t *testing.T) {
-tc := &trackingCloser{Reader: strings.NewReader(`{"status":"ok"}`)}
-mockClient := new(MockPortainerClient)
-mockClient.On("ProxyDockerRequest", mock.AnythingOfType("models.DockerProxyRequestOptions")).
-Return(&http.Response{StatusCode: http.StatusOK, Body: tc}, nil)
+	tc := &trackingCloser{Reader: strings.NewReader(`{"status":"ok"}`)}
+	mockClient := new(MockPortainerClient)
+	mockClient.On("ProxyDockerRequest", mock.AnythingOfType("models.DockerProxyRequestOptions")).
+		Return(&http.Response{StatusCode: http.StatusOK, Body: tc}, nil)
 
-server := &PortainerMCPServer{cli: mockClient}
-request := CreateMCPRequest(map[string]any{
-"environmentId": float64(1),
-"dockerAPIPath": "/containers/json",
-"method":        "GET",
-})
+	server := &PortainerMCPServer{cli: mockClient}
+	request := CreateMCPRequest(map[string]any{
+		"environmentId": float64(1),
+		"dockerAPIPath": "/containers/json",
+		"method":        "GET",
+	})
 
-handler := server.HandleDockerProxy()
-_, err := handler(context.Background(), request)
-assert.NoError(t, err)
-assert.True(t, tc.closed, "response body should be closed after handler returns")
+	handler := server.HandleDockerProxy()
+	_, err := handler(context.Background(), request)
+	assert.NoError(t, err)
+	assert.True(t, tc.closed, "response body should be closed after handler returns")
 }

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetEnvironmentTags verifies the HandleGetEnvironmentTags MCP tool handler.
@@ -113,13 +115,20 @@ func TestHandleCreateEnvironmentTag(t *testing.T) {
 			mockError:   nil,
 			expectError: true,
 		},
+		{
+			name:        "whitespace name triggers validateName error",
+			inputName:   "   ",
+			mockID:      0,
+			mockError:   nil,
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock client
 			mockClient := &MockPortainerClient{}
-			if tt.inputName != "" {
+			if strings.TrimSpace(tt.inputName) != "" {
 				mockClient.On("CreateEnvironmentTag", tt.inputName).Return(tt.mockID, tt.mockError)
 			}
 

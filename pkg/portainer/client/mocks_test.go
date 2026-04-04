@@ -655,7 +655,7 @@ func (m *MockPortainerAPI) GetDockerDashboard(environmentId int64) (*apimodels.D
 	return args.Get(0).(*apimodels.DockerDashboardResponse), args.Error(1)
 }
 
-func (m *MockPortainerAPI) GetKubernetesConfig(environmentId int64) (interface{}, error) {
+func (m *MockPortainerAPI) GetKubernetesConfig(environmentId int64) (any, error) {
 	args := m.Called(environmentId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

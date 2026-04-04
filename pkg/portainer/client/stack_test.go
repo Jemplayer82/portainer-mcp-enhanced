@@ -6,10 +6,11 @@ import (
 	"time"
 
 	apimodels "github.com/portainer/client-api-go/v2/pkg/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/utils"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestGetStacks verifies get stacks behavior.
@@ -352,7 +353,10 @@ func TestDeleteStack(t *testing.T) {
 			mockAPI.On("StackDelete", int64(tt.id), int64(tt.endpointID), tt.removeVolumes).Return(tt.mockError)
 
 			c := &PortainerClient{cli: mockAPI}
-			err := c.DeleteStack(tt.id, tt.endpointID, tt.removeVolumes)
+			err := c.DeleteStack(tt.id, models.DeleteStackOptions{
+				EndpointID:    tt.endpointID,
+				RemoveVolumes: tt.removeVolumes,
+			})
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -443,7 +447,11 @@ func TestUpdateStackGit(t *testing.T) {
 			mockAPI.On("StackUpdateGit", int64(tt.id), int64(tt.endpointID), mock.AnythingOfType("*models.StacksStackGitUpdatePayload")).Return(tt.mockResult, tt.mockError)
 
 			c := &PortainerClient{cli: mockAPI}
-			result, err := c.UpdateStackGit(tt.id, tt.endpointID, tt.referenceName, tt.prune)
+			result, err := c.UpdateStackGit(tt.id, models.UpdateStackGitOptions{
+				EndpointID:    tt.endpointID,
+				ReferenceName: tt.referenceName,
+				Prune:         tt.prune,
+			})
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -492,7 +500,11 @@ func TestRedeployStackGit(t *testing.T) {
 			mockAPI.On("StackGitRedeploy", int64(tt.id), int64(tt.endpointID), mock.AnythingOfType("*models.StacksStackGitRedployPayload")).Return(tt.mockResult, tt.mockError)
 
 			c := &PortainerClient{cli: mockAPI}
-			result, err := c.RedeployStackGit(tt.id, tt.endpointID, tt.pullImage, tt.prune)
+			result, err := c.RedeployStackGit(tt.id, models.RedeployStackGitOptions{
+				EndpointID: tt.endpointID,
+				PullImage:  tt.pullImage,
+				Prune:      tt.prune,
+			})
 
 			if tt.expectedError {
 				assert.Error(t, err)

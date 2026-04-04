@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleCreateTeam verifies the HandleCreateTeam MCP tool handler.
@@ -53,6 +54,18 @@ func TestHandleCreateTeam(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				// No need to set any parameters as the request will be invalid
+			},
+		},
+		{
+			name:        "invalid name (whitespace only)",
+			teamName:    "  ",
+			mockID:      0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name": "  ",
+				}
 			},
 		},
 	}
@@ -222,6 +235,19 @@ func TestHandleUpdateTeamName(t *testing.T) {
 			setupParams: func(request *mcp.CallToolRequest) {
 				request.Params.Arguments = map[string]any{
 					"id": float64(1),
+				}
+			},
+		},
+		{
+			name:        "invalid name (whitespace only)",
+			inputID:     1,
+			inputName:   "  ",
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":   float64(1),
+					"name": "  ",
 				}
 			},
 		},

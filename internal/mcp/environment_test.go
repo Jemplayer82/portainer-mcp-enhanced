@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetEnvironments verifies the HandleGetEnvironments MCP tool handler.
@@ -121,6 +122,17 @@ func TestHandleGetEnvironment(t *testing.T) {
 				request.Params.Arguments = map[string]any{}
 			},
 		},
+		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -209,6 +221,17 @@ func TestHandleDeleteEnvironment(t *testing.T) {
 				request.Params.Arguments = map[string]any{}
 			},
 		},
+		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -291,6 +314,17 @@ func TestHandleSnapshotEnvironment(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				request.Params.Arguments = map[string]any{}
+			},
+		},
+		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
 			},
 		},
 	}
@@ -438,6 +472,19 @@ func TestHandleUpdateEnvironmentTags(t *testing.T) {
 			},
 		},
 		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			inputTagIDs: []int{1, 2, 3},
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":     float64(0),
+					"tagIds": []any{float64(1), float64(2), float64(3)},
+				}
+			},
+		},
+		{
 			name:        "missing tagIds parameter",
 			inputID:     1,
 			inputTagIDs: nil,
@@ -546,6 +593,20 @@ func TestHandleUpdateEnvironmentUserAccesses(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				request.Params.Arguments = map[string]any{
+					"userAccesses": []any{
+						map[string]any{"id": float64(1), "access": "environment_administrator"},
+					},
+				}
+			},
+		},
+		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
 					"userAccesses": []any{
 						map[string]any{"id": float64(1), "access": "environment_administrator"},
 					},
@@ -680,6 +741,20 @@ func TestHandleUpdateEnvironmentTeamAccesses(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				request.Params.Arguments = map[string]any{
+					"teamAccesses": []any{
+						map[string]any{"id": float64(1), "access": "environment_administrator"},
+					},
+				}
+			},
+		},
+		{
+			name:        "invalid id - zero",
+			inputID:     0,
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
 					"teamAccesses": []any{
 						map[string]any{"id": float64(1), "access": "environment_administrator"},
 					},

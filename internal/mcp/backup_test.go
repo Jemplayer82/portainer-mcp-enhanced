@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetBackupStatus verifies the HandleGetBackupStatus MCP tool handler.
@@ -182,6 +183,28 @@ func TestHandleCreateBackup(t *testing.T) {
 	}
 }
 
+// TestHandleCreateBackupInvalidPassword verifies that HandleCreateBackup returns
+// an error result when the password parameter has the wrong type.
+func TestHandleCreateBackupInvalidPassword(t *testing.T) {
+	mockClient := &MockPortainerClient{}
+	server := &PortainerMCPServer{cli: mockClient}
+
+	request := CreateMCPRequest(map[string]any{
+		"password": 12345, // wrong type: integer instead of string
+	})
+
+	handler := server.HandleCreateBackup()
+	result, err := handler(context.Background(), request)
+
+	assert.NoError(t, err)
+	assert.True(t, result.IsError)
+	textContent, ok := result.Content[0].(mcp.TextContent)
+	assert.True(t, ok)
+	assert.Contains(t, textContent.Text, "invalid password parameter")
+
+	mockClient.AssertExpectations(t)
+}
+
 // TestHandleBackupToS3 verifies the HandleBackupToS3 MCP tool handler.
 func TestHandleBackupToS3(t *testing.T) {
 	tests := []struct {
@@ -189,6 +212,7 @@ func TestHandleBackupToS3(t *testing.T) {
 		args        map[string]any
 		mockError   error
 		expectError bool
+		expectMsg   string
 	}{
 		{
 			name: "successful backup to S3",
@@ -201,9 +225,71 @@ func TestHandleBackupToS3(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "missing required parameter",
+			name:        "missing accessKeyID parameter",
 			args:        map[string]any{},
 			expectError: true,
+			expectMsg:   "accessKeyID",
+		},
+		{
+			name: "missing secretAccessKey parameter",
+			args: map[string]any{
+				"accessKeyID": "AKID123",
+			},
+			expectError: true,
+			expectMsg:   "secretAccessKey",
+		},
+		{
+			name: "missing bucketName parameter",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+			},
+			expectError: true,
+			expectMsg:   "bucketName",
+		},
+		{
+			name: "invalid region type",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+				"region":          123,
+			},
+			expectError: true,
+			expectMsg:   "region",
+		},
+		{
+			name: "invalid s3CompatibleHost type",
+			args: map[string]any{
+				"accessKeyID":      "AKID123",
+				"secretAccessKey":  "secret",
+				"bucketName":       "my-bucket",
+				"s3CompatibleHost": 123,
+			},
+			expectError: true,
+			expectMsg:   "s3CompatibleHost",
+		},
+		{
+			name: "invalid password type",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+				"password":        123,
+			},
+			expectError: true,
+			expectMsg:   "password",
+		},
+		{
+			name: "invalid cronRule type",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+				"cronRule":        123,
+			},
+			expectError: true,
+			expectMsg:   "cronRule",
 		},
 		{
 			name: "api error",
@@ -214,6 +300,7 @@ func TestHandleBackupToS3(t *testing.T) {
 			},
 			mockError:   fmt.Errorf("api error"),
 			expectError: true,
+			expectMsg:   "api error",
 		},
 	}
 
@@ -221,19 +308,22 @@ func TestHandleBackupToS3(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
 
-			if _, ok := tt.args["accessKeyID"]; ok && tt.mockError != nil {
-				mockClient.On("BackupToS3", models.S3BackupSettings{
-					AccessKeyID:     tt.args["accessKeyID"].(string),
-					SecretAccessKey: tt.args["secretAccessKey"].(string),
-					BucketName:      tt.args["bucketName"].(string),
-				}).Return(tt.mockError)
-			} else if _, ok := tt.args["accessKeyID"]; ok {
+			_, hasAccessKey := tt.args["accessKeyID"]
+			_, hasSecretKey := tt.args["secretAccessKey"]
+			_, hasBucket := tt.args["bucketName"]
+			if hasAccessKey && hasSecretKey && hasBucket && !tt.expectError {
 				region, _ := tt.args["region"].(string)
 				mockClient.On("BackupToS3", models.S3BackupSettings{
 					AccessKeyID:     tt.args["accessKeyID"].(string),
 					SecretAccessKey: tt.args["secretAccessKey"].(string),
 					BucketName:      tt.args["bucketName"].(string),
 					Region:          region,
+				}).Return(tt.mockError)
+			} else if hasAccessKey && hasSecretKey && hasBucket && tt.mockError != nil {
+				mockClient.On("BackupToS3", models.S3BackupSettings{
+					AccessKeyID:     tt.args["accessKeyID"].(string),
+					SecretAccessKey: tt.args["secretAccessKey"].(string),
+					BucketName:      tt.args["bucketName"].(string),
 				}).Return(tt.mockError)
 			}
 
@@ -246,6 +336,11 @@ func TestHandleBackupToS3(t *testing.T) {
 			if tt.expectError {
 				assert.NoError(t, err)
 				assert.True(t, result.IsError)
+				textContent, ok := result.Content[0].(mcp.TextContent)
+				assert.True(t, ok)
+				if tt.expectMsg != "" {
+					assert.Contains(t, textContent.Text, tt.expectMsg)
+				}
 			} else {
 				assert.NoError(t, err)
 				textContent, ok := result.Content[0].(mcp.TextContent)
@@ -265,6 +360,7 @@ func TestHandleRestoreFromS3(t *testing.T) {
 		args        map[string]any
 		mockError   error
 		expectError bool
+		expectMsg   string
 	}{
 		{
 			name: "successful restore from S3",
@@ -277,9 +373,73 @@ func TestHandleRestoreFromS3(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "missing required parameter",
+			name:        "missing accessKeyID parameter",
 			args:        map[string]any{},
 			expectError: true,
+			expectMsg:   "accessKeyID",
+		},
+		{
+			name: "missing secretAccessKey parameter",
+			args: map[string]any{
+				"accessKeyID": "AKID123",
+			},
+			expectError: true,
+			expectMsg:   "secretAccessKey",
+		},
+		{
+			name: "missing bucketName parameter",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+			},
+			expectError: true,
+			expectMsg:   "bucketName",
+		},
+		{
+			name: "missing filename parameter",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+			},
+			expectError: true,
+			expectMsg:   "filename",
+		},
+		{
+			name: "invalid password type",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+				"filename":        "backup.tar.gz",
+				"password":        123,
+			},
+			expectError: true,
+			expectMsg:   "password",
+		},
+		{
+			name: "invalid region type",
+			args: map[string]any{
+				"accessKeyID":     "AKID123",
+				"secretAccessKey": "secret",
+				"bucketName":      "my-bucket",
+				"filename":        "backup.tar.gz",
+				"region":          123,
+			},
+			expectError: true,
+			expectMsg:   "region",
+		},
+		{
+			name: "invalid s3CompatibleHost type",
+			args: map[string]any{
+				"accessKeyID":      "AKID123",
+				"secretAccessKey":  "secret",
+				"bucketName":       "my-bucket",
+				"filename":         "backup.tar.gz",
+				"s3CompatibleHost": 123,
+			},
+			expectError: true,
+			expectMsg:   "s3CompatibleHost",
 		},
 		{
 			name: "api error",
@@ -291,6 +451,7 @@ func TestHandleRestoreFromS3(t *testing.T) {
 			},
 			mockError:   fmt.Errorf("api error"),
 			expectError: true,
+			expectMsg:   "api error",
 		},
 	}
 
@@ -298,7 +459,21 @@ func TestHandleRestoreFromS3(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockPortainerClient{}
 
-			if _, ok := tt.args["accessKeyID"]; ok {
+			_, hasAccessKey := tt.args["accessKeyID"]
+			_, hasSecretKey := tt.args["secretAccessKey"]
+			_, hasBucket := tt.args["bucketName"]
+			_, hasFilename := tt.args["filename"]
+			if hasAccessKey && hasSecretKey && hasBucket && hasFilename && !tt.expectError {
+				mockClient.On("RestoreFromS3",
+					tt.args["accessKeyID"].(string),
+					tt.args["bucketName"].(string),
+					tt.args["filename"].(string),
+					"", // password
+					"", // region
+					"", // s3CompatibleHost
+					tt.args["secretAccessKey"].(string),
+				).Return(tt.mockError)
+			} else if hasAccessKey && hasSecretKey && hasBucket && hasFilename && tt.mockError != nil {
 				mockClient.On("RestoreFromS3",
 					tt.args["accessKeyID"].(string),
 					tt.args["bucketName"].(string),
@@ -319,6 +494,11 @@ func TestHandleRestoreFromS3(t *testing.T) {
 			if tt.expectError {
 				assert.NoError(t, err)
 				assert.True(t, result.IsError)
+				textContent, ok := result.Content[0].(mcp.TextContent)
+				assert.True(t, ok)
+				if tt.expectMsg != "" {
+					assert.Contains(t, textContent.Text, tt.expectMsg)
+				}
 			} else {
 				assert.NoError(t, err)
 				textContent, ok := result.Content[0].(mcp.TextContent)

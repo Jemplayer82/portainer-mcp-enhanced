@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jmrplens/portainer-mcp-enhanced/pkg/portainer/models"
 )
 
 // TestHandleGetStacks verifies the HandleGetStacks MCP tool handler.
@@ -119,6 +120,18 @@ func TestHandleGetStackFile(t *testing.T) {
 			expectError: true,
 			setupParams: func(request *mcp.CallToolRequest) {
 				// No need to set any parameters as the request will be invalid
+			},
+		},
+		{
+			name:        "invalid id zero",
+			inputID:     0,
+			mockContent: "",
+			mockError:   nil,
+			expectError: true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id": float64(0),
+				}
 			},
 		},
 	}
@@ -254,6 +267,38 @@ func TestHandleCreateStack(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:             "empty name triggers validateName error",
+			inputName:        "",
+			inputFile:        "version: '3'\nservices:\n  web:\n    image: nginx",
+			inputEnvGroupIDs: []int{1},
+			mockID:           0,
+			mockError:        nil,
+			expectError:      true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name":                "   ",
+					"file":                "version: '3'\nservices:\n  web:\n    image: nginx",
+					"environmentGroupIds": []any{float64(1)},
+				}
+			},
+		},
+		{
+			name:             "invalid YAML file triggers validateComposeYAML error",
+			inputName:        "test-stack",
+			inputFile:        "",
+			inputEnvGroupIDs: []int{1},
+			mockID:           0,
+			mockError:        nil,
+			expectError:      true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"name":                "test-stack",
+					"file":                ":\ninvalid: {{{yaml",
+					"environmentGroupIds": []any{float64(1)},
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -381,6 +426,51 @@ func TestHandleUpdateStack(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:             "invalid id zero triggers validatePositiveID error",
+			inputID:          0,
+			inputFile:        "version: '3'\nservices:\n  web:\n    image: nginx",
+			inputEnvGroupIDs: []int{1},
+			mockError:        nil,
+			expectError:      true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":                  float64(0),
+					"file":                "version: '3'\nservices:\n  web:\n    image: nginx",
+					"environmentGroupIds": []any{float64(1)},
+				}
+			},
+		},
+		{
+			name:             "invalid YAML file triggers validateComposeYAML error",
+			inputID:          1,
+			inputFile:        "",
+			inputEnvGroupIDs: []int{1},
+			mockError:        nil,
+			expectError:      true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":                  float64(1),
+					"file":                ":\ninvalid: {{{yaml",
+					"environmentGroupIds": []any{float64(1)},
+				}
+			},
+		},
+		{
+			name:             "wrong type for environmentGroupIds triggers GetArrayOfIntegers error",
+			inputID:          1,
+			inputFile:        "version: '3'\nservices:\n  web:\n    image: nginx",
+			inputEnvGroupIDs: nil,
+			mockError:        nil,
+			expectError:      true,
+			setupParams: func(request *mcp.CallToolRequest) {
+				request.Params.Arguments = map[string]any{
+					"id":                  float64(1),
+					"file":                "version: '3'\nservices:\n  web:\n    image: nginx",
+					"environmentGroupIds": "not-an-array",
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -427,611 +517,668 @@ func TestHandleUpdateStack(t *testing.T) {
 
 // TestHandleListRegularStacks verifies the HandleListRegularStacks MCP tool handler.
 func TestHandleListRegularStacks(t *testing.T) {
-tests := []struct {
-name        string
-mockStacks  []models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name: "successful regular stacks retrieval",
-mockStacks: []models.RegularStack{
-{ID: 1, Name: "web-app", Status: 1, EndpointID: 2},
-{ID: 2, Name: "db-stack", Status: 1, EndpointID: 3},
-},
-expectError: false,
-},
-{
-name:        "empty list",
-mockStacks:  []models.RegularStack{},
-expectError: false,
-},
-{
-name:        "api error",
-mockError:   fmt.Errorf("connection refused"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		mockStacks  []models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name: "successful regular stacks retrieval",
+			mockStacks: []models.RegularStack{
+				{ID: 1, Name: "web-app", Status: 1, EndpointID: 2},
+				{ID: 2, Name: "db-stack", Status: 1, EndpointID: 3},
+			},
+			expectError: false,
+		},
+		{
+			name:        "empty list",
+			mockStacks:  []models.RegularStack{},
+			expectError: false,
+		},
+		{
+			name:        "api error",
+			mockError:   fmt.Errorf("connection refused"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-mockClient.On("GetRegularStacks").Return(tt.mockStacks, tt.mockError)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			mockClient.On("GetRegularStacks").Return(tt.mockStacks, tt.mockError)
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleListRegularStacks()
-result, err := handler(context.Background(), mcp.CallToolRequest{})
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleListRegularStacks()
+			result, err := handler(context.Background(), mcp.CallToolRequest{})
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-var stacks []models.RegularStack
-textContent := result.Content[0].(mcp.TextContent)
-unmarshalErr := json.Unmarshal([]byte(textContent.Text), &stacks)
-assert.NoError(t, unmarshalErr)
-assert.Equal(t, len(tt.mockStacks), len(stacks))
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+				var stacks []models.RegularStack
+				textContent := result.Content[0].(mcp.TextContent)
+				unmarshalErr := json.Unmarshal([]byte(textContent.Text), &stacks)
+				assert.NoError(t, unmarshalErr)
+				assert.Equal(t, len(tt.mockStacks), len(stacks))
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleInspectStack verifies the HandleInspectStack MCP tool handler.
 func TestHandleInspectStack(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful inspect",
-params:    map[string]any{"id": float64(1)},
-mockStack: models.RegularStack{ID: 1, Name: "my-stack", Status: 1},
-},
-{
-name:        "missing id",
-params:      map[string]any{},
-expectError: true,
-},
-{
-name:        "invalid id zero",
-params:      map[string]any{"id": float64(0)},
-expectError: true,
-},
-{
-name:        "negative id",
-params:      map[string]any{"id": float64(-1)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1)},
-mockError:   fmt.Errorf("not found"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful inspect",
+			params:    map[string]any{"id": float64(1)},
+			mockStack: models.RegularStack{ID: 1, Name: "my-stack", Status: 1},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{},
+			expectError: true,
+		},
+		{
+			name:        "invalid id zero",
+			params:      map[string]any{"id": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "negative id",
+			params:      map[string]any{"id": float64(-1)},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1)},
+			mockError:   fmt.Errorf("not found"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-if idVal, ok := tt.params["id"]; ok && idVal.(float64) > 0 {
-mockClient.On("InspectStack", int(idVal.(float64))).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			if idVal, ok := tt.params["id"]; ok && idVal.(float64) > 0 {
+				mockClient.On("InspectStack", int(idVal.(float64))).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleInspectStack()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleInspectStack()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-var stack models.RegularStack
-textContent := result.Content[0].(mcp.TextContent)
-unmarshalErr := json.Unmarshal([]byte(textContent.Text), &stack)
-assert.NoError(t, unmarshalErr)
-assert.Equal(t, tt.mockStack.ID, stack.ID)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+				var stack models.RegularStack
+				textContent := result.Content[0].(mcp.TextContent)
+				unmarshalErr := json.Unmarshal([]byte(textContent.Text), &stack)
+				assert.NoError(t, unmarshalErr)
+				assert.Equal(t, tt.mockStack.ID, stack.ID)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleDeleteStack verifies the HandleDeleteStack MCP tool handler.
 func TestHandleDeleteStack(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockError   error
-expectError bool
-}{
-{
-name:   "successful delete",
-params: map[string]any{"id": float64(1), "environmentId": float64(2), "removeVolumes": true},
-},
-{
-name:   "successful delete without removeVolumes",
-params: map[string]any{"id": float64(1), "environmentId": float64(2)},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1)},
-expectError: true,
-},
-{
-name:        "invalid id zero",
-params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "invalid environmentId zero",
-params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockError:   fmt.Errorf("forbidden"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:   "successful delete",
+			params: map[string]any{"id": float64(1), "environmentId": float64(2), "removeVolumes": true},
+		},
+		{
+			name:   "successful delete without removeVolumes",
+			params: map[string]any{"id": float64(1), "environmentId": float64(2)},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id zero",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId zero",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "invalid removeVolumes type triggers GetBoolean error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "removeVolumes": "not-a-bool"},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockError:   fmt.Errorf("forbidden"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
-removeVolumes, _ := tt.params["removeVolumes"].(bool)
-mockClient.On("DeleteStack", int(idVal.(float64)), int(envVal.(float64)), removeVolumes).Return(tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			_, removeVolumesIsInvalid := tt.params["removeVolumes"].(string)
+			if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 && !removeVolumesIsInvalid {
+				removeVolumes, _ := tt.params["removeVolumes"].(bool)
+				mockClient.On("DeleteStack", int(idVal.(float64)), models.DeleteStackOptions{
+					EndpointID:    int(envVal.(float64)),
+					RemoveVolumes: removeVolumes,
+				}).Return(tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleDeleteStack()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleDeleteStack()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-textContent := result.Content[0].(mcp.TextContent)
-assert.Contains(t, textContent.Text, "successfully")
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+				textContent := result.Content[0].(mcp.TextContent)
+				assert.Contains(t, textContent.Text, "successfully")
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleInspectStackFile verifies the HandleInspectStackFile MCP tool handler.
 func TestHandleInspectStackFile(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockContent string
-mockError   error
-expectError bool
-}{
-{
-name:        "successful file retrieval",
-params:      map[string]any{"id": float64(1)},
-mockContent: "version: '3'\nservices:\n  web:\n    image: nginx",
-},
-{
-name:        "missing id",
-params:      map[string]any{},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(0)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1)},
-mockError:   fmt.Errorf("not found"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockContent string
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:        "successful file retrieval",
+			params:      map[string]any{"id": float64(1)},
+			mockContent: "version: '3'\nservices:\n  web:\n    image: nginx",
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1)},
+			mockError:   fmt.Errorf("not found"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-if idVal, ok := tt.params["id"]; ok && idVal.(float64) > 0 {
-mockClient.On("InspectStackFile", int(idVal.(float64))).Return(tt.mockContent, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			if idVal, ok := tt.params["id"]; ok && idVal.(float64) > 0 {
+				mockClient.On("InspectStackFile", int(idVal.(float64))).Return(tt.mockContent, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleInspectStackFile()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleInspectStackFile()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-textContent := result.Content[0].(mcp.TextContent)
-assert.Equal(t, tt.mockContent, textContent.Text)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+				textContent := result.Content[0].(mcp.TextContent)
+				assert.Equal(t, tt.mockContent, textContent.Text)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleUpdateStackGit verifies the HandleUpdateStackGit MCP tool handler.
 func TestHandleUpdateStackGit(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful update with all params",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2), "referenceName": "main", "prune": true},
-mockStack: models.RegularStack{ID: 1, Name: "my-stack"},
-},
-{
-name:      "successful update with minimal params",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockStack: models.RegularStack{ID: 1, Name: "my-stack"},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1)},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "invalid environmentId",
-params:      map[string]any{"id": float64(1), "environmentId": float64(-1)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockError:   fmt.Errorf("conflict"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful update with all params",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "referenceName": "main", "prune": true},
+			mockStack: models.RegularStack{ID: 1, Name: "my-stack"},
+		},
+		{
+			name:      "successful update with minimal params",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockStack: models.RegularStack{ID: 1, Name: "my-stack"},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(-1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid referenceName type triggers GetString error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "referenceName": float64(42)},
+			expectError: true,
+		},
+		{
+			name:        "invalid prune type triggers GetBoolean error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "prune": "not-a-bool"},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockError:   fmt.Errorf("conflict"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
-refName, _ := tt.params["referenceName"].(string)
-prune, _ := tt.params["prune"].(bool)
-mockClient.On("UpdateStackGit", int(idVal.(float64)), int(envVal.(float64)), refName, prune).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			_, refNameInvalid := tt.params["referenceName"].(float64)
+			_, pruneInvalid := tt.params["prune"].(string)
+			if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 && !refNameInvalid && !pruneInvalid {
+				refName, _ := tt.params["referenceName"].(string)
+				prune, _ := tt.params["prune"].(bool)
+				mockClient.On("UpdateStackGit", int(idVal.(float64)), models.UpdateStackGitOptions{
+					EndpointID:    int(envVal.(float64)),
+					ReferenceName: refName,
+					Prune:         prune,
+				}).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleUpdateStackGit()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleUpdateStackGit()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleRedeployStackGit verifies the HandleRedeployStackGit MCP tool handler.
 func TestHandleRedeployStackGit(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful redeploy with all params",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": true, "prune": true},
-mockStack: models.RegularStack{ID: 1, Name: "redeployed"},
-},
-{
-name:      "successful redeploy minimal",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockStack: models.RegularStack{ID: 1, Name: "redeployed"},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1)},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockError:   fmt.Errorf("deploy error"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful redeploy with all params",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": true, "prune": true},
+			mockStack: models.RegularStack{ID: 1, Name: "redeployed"},
+		},
+		{
+			name:      "successful redeploy minimal",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockStack: models.RegularStack{ID: 1, Name: "redeployed"},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId zero triggers validatePositiveID error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "invalid pullImage type triggers GetBoolean error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": "not-a-bool"},
+			expectError: true,
+		},
+		{
+			name:        "invalid prune type triggers GetBoolean error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "prune": "not-a-bool"},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockError:   fmt.Errorf("deploy error"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
-pullImage, _ := tt.params["pullImage"].(bool)
-prune, _ := tt.params["prune"].(bool)
-mockClient.On("RedeployStackGit", int(idVal.(float64)), int(envVal.(float64)), pullImage, prune).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			_, pullImageInvalid := tt.params["pullImage"].(string)
+			_, pruneInvalid := tt.params["prune"].(string)
+			if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 && !pullImageInvalid && !pruneInvalid {
+				pullImage, _ := tt.params["pullImage"].(bool)
+				prune, _ := tt.params["prune"].(bool)
+				mockClient.On("RedeployStackGit", int(idVal.(float64)), models.RedeployStackGitOptions{
+					EndpointID: int(envVal.(float64)),
+					PullImage:  pullImage,
+					Prune:      prune,
+				}).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleRedeployStackGit()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleRedeployStackGit()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleStartStack verifies the HandleStartStack MCP tool handler.
 func TestHandleStartStack(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful start",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockStack: models.RegularStack{ID: 1, Name: "started-stack", Status: 1},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1)},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(-5), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "invalid environmentId",
-params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockError:   fmt.Errorf("start failed"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful start",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockStack: models.RegularStack{ID: 1, Name: "started-stack", Status: 1},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(-5), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockError:   fmt.Errorf("start failed"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
-mockClient.On("StartStack", int(idVal.(float64)), int(envVal.(float64))).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
+				mockClient.On("StartStack", int(idVal.(float64)), int(envVal.(float64))).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleStartStack()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleStartStack()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleStopStack verifies the HandleStopStack MCP tool handler.
 func TestHandleStopStack(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful stop",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockStack: models.RegularStack{ID: 1, Name: "stopped-stack", Status: 2},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1)},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-mockError:   fmt.Errorf("stop failed"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful stop",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockStack: models.RegularStack{ID: 1, Name: "stopped-stack", Status: 2},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId zero triggers validatePositiveID error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			mockError:   fmt.Errorf("stop failed"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
-mockClient.On("StopStack", int(idVal.(float64)), int(envVal.(float64))).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			if hasID && hasEnv && idVal.(float64) > 0 && envVal.(float64) > 0 {
+				mockClient.On("StopStack", int(idVal.(float64)), int(envVal.(float64))).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleStopStack()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleStopStack()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandleMigrateStack verifies the HandleMigrateStack MCP tool handler.
 func TestHandleMigrateStack(t *testing.T) {
-tests := []struct {
-name        string
-params      map[string]any
-mockStack   models.RegularStack
-mockError   error
-expectError bool
-}{
-{
-name:      "successful migrate with name",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3), "name": "new-name"},
-mockStack: models.RegularStack{ID: 1, Name: "new-name"},
-},
-{
-name:      "successful migrate without name",
-params:    map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
-mockStack: models.RegularStack{ID: 1, Name: "original"},
-},
-{
-name:        "missing id",
-params:      map[string]any{"environmentId": float64(2), "targetEnvironmentId": float64(3)},
-expectError: true,
-},
-{
-name:        "missing environmentId",
-params:      map[string]any{"id": float64(1), "targetEnvironmentId": float64(3)},
-expectError: true,
-},
-{
-name:        "missing targetEnvironmentId",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
-expectError: true,
-},
-{
-name:        "invalid id",
-params:      map[string]any{"id": float64(0), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
-expectError: true,
-},
-{
-name:        "invalid environmentId",
-params:      map[string]any{"id": float64(1), "environmentId": float64(-1), "targetEnvironmentId": float64(3)},
-expectError: true,
-},
-{
-name:        "invalid targetEnvironmentId",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(0)},
-expectError: true,
-},
-{
-name:        "api error",
-params:      map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
-mockError:   fmt.Errorf("migration failed"),
-expectError: true,
-},
-}
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name:      "successful migrate with name",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3), "name": "new-name"},
+			mockStack: models.RegularStack{ID: 1, Name: "new-name"},
+		},
+		{
+			name:      "successful migrate without name",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
+			mockStack: models.RegularStack{ID: 1, Name: "original"},
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(2), "targetEnvironmentId": float64(3)},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(1), "targetEnvironmentId": float64(3)},
+			expectError: true,
+		},
+		{
+			name:        "missing targetEnvironmentId",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2)},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(-1), "targetEnvironmentId": float64(3)},
+			expectError: true,
+		},
+		{
+			name:        "invalid targetEnvironmentId",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(0)},
+			expectError: true,
+		},
+		{
+			name:        "invalid name type triggers GetString error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3), "name": float64(42)},
+			expectError: true,
+		},
+		{
+			name:        "api error",
+			params:      map[string]any{"id": float64(1), "environmentId": float64(2), "targetEnvironmentId": float64(3)},
+			mockError:   fmt.Errorf("migration failed"),
+			expectError: true,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-mockClient := &MockPortainerClient{}
-idVal, hasID := tt.params["id"]
-envVal, hasEnv := tt.params["environmentId"]
-targetVal, hasTarget := tt.params["targetEnvironmentId"]
-if hasID && hasEnv && hasTarget && idVal.(float64) > 0 && envVal.(float64) > 0 && targetVal.(float64) > 0 {
-name, _ := tt.params["name"].(string)
-mockClient.On("MigrateStack", int(idVal.(float64)), int(envVal.(float64)), int(targetVal.(float64)), name).Return(tt.mockStack, tt.mockError)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			idVal, hasID := tt.params["id"]
+			envVal, hasEnv := tt.params["environmentId"]
+			targetVal, hasTarget := tt.params["targetEnvironmentId"]
+			_, nameInvalid := tt.params["name"].(float64)
+			if hasID && hasEnv && hasTarget && idVal.(float64) > 0 && envVal.(float64) > 0 && targetVal.(float64) > 0 && !nameInvalid {
+				name, _ := tt.params["name"].(string)
+				mockClient.On("MigrateStack", int(idVal.(float64)), int(envVal.(float64)), int(targetVal.(float64)), name).Return(tt.mockStack, tt.mockError)
+			}
 
-s := &PortainerMCPServer{cli: mockClient}
-handler := s.HandleMigrateStack()
-req := mcp.CallToolRequest{}
-req.Params.Arguments = tt.params
-result, err := handler(context.Background(), req)
+			s := &PortainerMCPServer{cli: mockClient}
+			handler := s.HandleMigrateStack()
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := handler(context.Background(), req)
 
-assert.NoError(t, err)
-if tt.expectError {
-assert.True(t, result.IsError)
-} else {
-assert.False(t, result.IsError)
-}
-mockClient.AssertExpectations(t)
-})
-}
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
