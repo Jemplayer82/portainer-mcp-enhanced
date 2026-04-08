@@ -8,7 +8,7 @@ BUILD_DATE ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 
 LDFLAGS_STRING = -s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}
 
-.PHONY: clean pre build release run test test-integration test-all fmt vet lint
+.PHONY: clean pre build release run test test-coverage test-integration test-all fmt vet lint inspector check-docs
 
 clean:
 	rm -rf dist
@@ -45,6 +45,24 @@ test-integration:
 	go test -v ./tests/...
 
 test-all: test test-integration
+
+check-docs:
+	@# AGENTS.md is the canonical source. CLAUDE.md and .github/copilot-instructions.md
+	@# are derived from it with different formatting. This target warns if AGENTS.md has
+	@# been modified more recently than either derived file, indicating they may need updating.
+	@stale=""; \
+	for f in CLAUDE.md .github/copilot-instructions.md; do \
+		if [ AGENTS.md -nt "$$f" ]; then \
+			stale="$$stale $$f"; \
+		fi; \
+	done; \
+	if [ -n "$$stale" ]; then \
+		echo "WARNING: AGENTS.md is newer than:$$stale"; \
+		echo "Review AGENTS.md changes and update derived files if needed."; \
+		exit 1; \
+	else \
+		echo "OK: CLAUDE.md and .github/copilot-instructions.md are up to date with AGENTS.md"; \
+	fi
 
 # Include custom make targets
 -include $(wildcard .dev/*.make)
