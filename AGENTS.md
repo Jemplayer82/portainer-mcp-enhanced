@@ -2,30 +2,35 @@
 
 MCP (Model Context Protocol) server in Go that connects AI assistants to Portainer, enabling container management through natural language. Exposes 98 granular tools (grouped into 15 meta-tools by default) covering environments, stacks, Docker, Kubernetes, users, teams, registries, and more.
 
-> Canonical source: `AGENTS.md`. This file is the Claude-formatted version.
+> This file is the canonical source of project intelligence. `CLAUDE.md` and `.github/copilot-instructions.md` are derived from it.
 
 ---
 
 ## Build & Run
 
 ```bash
-make build                    # → dist/portainer-mcp-enhanced
-make PLATFORM=linux ARCH=amd64 build  # cross-compile
+# Build
+make build                              # → dist/portainer-mcp-enhanced
+make PLATFORM=linux ARCH=amd64 build   # cross-compile
 
-make test                     # unit tests (no external deps)
-make test-integration         # requires Docker + Portainer container
-make test-all                 # unit + integration
-make test-coverage            # unit tests with coverage report
+# Test
+make test                   # unit tests (no external deps)
+make test-integration       # requires Docker + Portainer container
+make test-all               # unit + integration
+make test-coverage          # unit tests with coverage report
 
-make fmt                      # gofmt -s -w .
-make vet                      # go vet ./...
-make lint                     # vet + additional checks
+# Lint & format
+make fmt                    # gofmt -s -w .
+make vet                    # go vet ./...
+make lint                   # vet + additional checks
 
+# Run
 dist/portainer-mcp-enhanced \
   --server https://portainer.example.com \
   --token <api-token>
 
-make inspector                # MCP Inspector (interactive debugging)
+# MCP Inspector (interactive debugging)
+make inspector
 ```
 
 ### CLI Flags
@@ -54,7 +59,8 @@ internal/
   k8sutil/                  Kubernetes response stripping utilities
 pkg/
   portainer/
-    client/                 HTTP client wrapper (adapter.go + adapter_<domain>.go × 16)
+    client/                 HTTP client wrapper for Portainer API
+                            adapter.go + adapter_<domain>.go (16 domain files)
     models/                 Local data models + ConvertXxx() from raw API models (35 files)
   toolgen/                  Tool YAML loader + parameter parsing
 tests/
@@ -70,7 +76,9 @@ tools.yaml                  Declarative tool definitions (v1.2 format, embedded 
 
 ### Meta-tool System
 
-`metatool_registry.go` defines 15 groups that aggregate 98 tools behind an `action` enum parameter. Default mode uses meta-tools; `--granular-tools` exposes individual tools. Groups: `manage_environments`, `manage_stacks`, `manage_access_groups`, `manage_users`, `manage_teams`, `manage_docker`, `manage_kubernetes`, `manage_helm`, `manage_registries`, `manage_templates`, `manage_backups`, `manage_webhooks`, `manage_edge`, `manage_settings`, `manage_system`.
+`metatool_registry.go` defines 15 groups that aggregate 98 tools behind an `action` enum parameter. Default mode uses meta-tools; `--granular-tools` exposes individual tools.
+
+Groups: `manage_environments`, `manage_stacks`, `manage_access_groups`, `manage_users`, `manage_teams`, `manage_docker`, `manage_kubernetes`, `manage_helm`, `manage_registries`, `manage_templates`, `manage_backups`, `manage_webhooks`, `manage_edge`, `manage_settings`, `manage_system`.
 
 ### YAML-Driven Tools
 
@@ -99,7 +107,30 @@ Handlers never touch raw models. The client layer owns all conversion.
 
 ### Interface-Based Client
 
-`PortainerClient` interface in `server.go` composes 18 domain-specific sub-interfaces defined in `client_interfaces.go` (e.g., `TagClient`, `EnvironmentClient`, `StackClient`, `DockerClient`, `HelmClient`). All handlers use `s.cli` — never direct HTTP calls. Tests mock this interface.
+`PortainerClient` interface in `server.go` composes 18 domain-specific sub-interfaces defined in `client_interfaces.go`:
+
+| Interface | Domain |
+|-----------|--------|
+| `TagClient` | Environment tags |
+| `EnvironmentClient` | Environments (endpoints) |
+| `EnvironmentGroupClient` | Environment groups |
+| `AccessGroupClient` | Access groups (edge groups) |
+| `StackClient` | Edge stacks + regular stacks |
+| `TeamClient` | Teams and membership |
+| `UserClient` | User accounts |
+| `SettingsClient` | Server settings + SSL |
+| `TemplateClient` | App templates + custom templates |
+| `DockerClient` | Docker API proxy + dashboard |
+| `KubernetesClient` | Kubernetes API proxy + dashboard |
+| `RegistryClient` | Container registries |
+| `BackupClient` | Backups + S3 |
+| `WebhookClient` | Webhooks |
+| `EdgeClient` | Edge jobs + update schedules |
+| `HelmClient` | Helm repos, charts, releases |
+| `AuthClient` | Authentication |
+| `SystemClient` | Version, status, roles, MOTD |
+
+All handlers use `s.cli` — never direct HTTP calls. Tests mock this interface.
 
 ### Docker/K8s Proxy
 
@@ -154,25 +185,9 @@ Minimum test cases per handler: success path, API error, missing required param,
 
 ---
 
-## Test File Conventions (`**/*_test.go`)
-
-- Use table-driven tests with `tests := []struct{ name string; ... }` and `t.Run(tt.name, ...)`.
-- Mock the `PortainerClient` interface using `MockPortainerClient` from `mocks_test.go` (testify/mock).
-- Mock setup: `mockClient.On("MethodName", args...).Return(result, error)`.
-- Always call `mockClient.AssertExpectations(t)` at the end of each test case.
-- Create server with `&PortainerMCPServer{cli: mockClient}` — no real HTTP needed.
-- Use `testify/assert` for assertions: `assert.NoError`, `assert.Equal`, `assert.Contains`, `assert.True`.
-- For error cases: verify `result.IsError == true` and check error message in `result.Content[0].(mcp.TextContent).Text`.
-- For success cases: unmarshal `result.Content[0].(mcp.TextContent).Text` as JSON and compare to expected models.
-- For write operations: also verify the handler returns a success message string (e.g., `"created successfully"`).
-- Parameter validation tests: cover required missing params, invalid IDs (≤ 0), invalid enum values.
-- Integration tests (in `tests/integration/`) use real Docker containers — do not run in CI without Docker.
-
----
-
 ## Skills
 
-Deeper workflow guides are in `skills/`. Use them when working on specific tasks:
+Deeper workflow guides are in `skills/`:
 
 | Skill | When to use |
 |-------|-------------|
@@ -188,7 +203,16 @@ Deeper workflow guides are in `skills/`. Use them when working on specific tasks
 
 ## Documentation
 
-Starlight/Astro site in `docs/`, built with `pnpm` (not npm). Design decision records in `docs/design/` with format `YYMMDD-N-short-description.md`.
+Starlight/Astro site in `docs/`, built with `pnpm` (not npm):
+
+```bash
+cd docs
+pnpm install
+pnpm run dev    # localhost:4321
+pnpm run build  # production build
+```
+
+Design decision records live in `docs/design/` with format `YYMMDD-N-short-description.md`.
 
 ## Release
 

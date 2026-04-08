@@ -1,6 +1,12 @@
 # Testing Patterns
 
-Comprehensive guide for writing tests in this project: mocking, table-driven tests, builder patterns, and integration tests.
+**When to use**: Writing unit tests for handlers, model conversion tests, integration tests, or adding mock methods for new client interface methods.
+**Triggers on**: test, unit test, mock, table-driven, testify, assert, integration test, model conversion, mocks_test.go, CreateMCPRequest
+**Covers**: mock client setup, table-driven pattern, CreateMCPRequest helper, minimum test cases, result assertions, nil-input tests, integration test structure
+
+---
+
+Guide for writing tests in this project: mocking, table-driven tests, and integration tests.
 
 ## Mock Client
 
@@ -172,6 +178,45 @@ func TestConvertUser(t *testing.T) {
     assert.Equal(t, "admin", result.Role)
 }
 ```
+
+## CreateMCPRequest Helper
+
+Newer tests use a `CreateMCPRequest` helper defined in `internal/mcp/utils.go` (exported, available to all `package mcp` tests) to build `mcp.CallToolRequest` values from a plain map. Use it instead of manually constructing the struct:
+
+```go
+// Helper usage (preferred in newer tests)
+request := CreateMCPRequest(map[string]any{
+    "id":   float64(1),
+    "name": "test",
+})
+
+// Manual construction (older style, still valid)
+request := mcp.CallToolRequest{}
+request.Params.Arguments = map[string]interface{}{
+    "id":   float64(1),
+    "name": "test",
+}
+```
+
+> **Important**: JSON numbers deserialise as `float64` in Go. Always use `float64(n)` for integer parameters in test maps, not `int(n)`.
+
+## Nil-Input Model Tests
+
+Every `ConvertXxx()` function must handle nil input without panicking. Add a nil-input test alongside the normal conversion test:
+
+```go
+func TestConvertUser_NilInput(t *testing.T) {
+    result := ConvertUser(nil)
+    assert.Equal(t, User{}, result) // returns zero value, no panic
+}
+
+func TestConvertUsers_NilSlice(t *testing.T) {
+    result := ConvertUsers(nil)
+    assert.Empty(t, result) // returns empty slice, no panic
+}
+```
+
+This pattern is enforced by `pkg/portainer/models/nil_input_test.go` which runs nil-input checks across all conversion functions.
 
 ## Running Tests
 

@@ -1,5 +1,11 @@
 # Portainer API Expert
 
+**When to use**: Working with the Portainer REST API, adding a new API domain, understanding how the Go SDK maps to API endpoints, or debugging API call failures.
+**Triggers on**: portainer api, sdk, client, adapter, endpoint, raw model, apimodels, ConvertXxx, HTTP client, API domain
+**Covers**: SDK client structure, adapter file layout, domain table, model conversion pattern, Docker/K8s proxy, authentication, version compatibility
+
+---
+
 Deep knowledge of the Portainer REST API, its Go SDK, and how this project wraps them.
 
 ## Portainer API Overview
@@ -17,7 +23,7 @@ import (
 )
 ```
 
-Each domain has its own file (e.g., `user.go`, `stack.go`, `docker.go`) implementing methods that:
+Each domain has its own file implementing methods that:
 1. Call the raw SDK method
 2. Transform the raw response model (`apimodels.*`) into a local model (`models.*`)
 3. Return the local model
@@ -32,6 +38,34 @@ func (c *PortainerClient) GetUsers() ([]models.User, error) {
     return models.ConvertUsers(rawUsers), nil
 }
 ```
+
+### Adapter File Layout
+
+The client package uses two naming conventions — newer domains use `adapter_<domain>.go`, older ones use plain `<domain>.go`. Both are valid; check what exists before adding a new file.
+
+| File | Domain |
+|------|--------|
+| `adapter.go` | Shared/utility client setup |
+| `adapter_auth.go` | Authentication |
+| `adapter_backups.go` | Backups + S3 |
+| `adapter_docker.go` | Docker proxy + dashboard |
+| `adapter_edge.go` | Edge jobs + update schedules |
+| `adapter_environments.go` | Environments (endpoints) |
+| `adapter_helm.go` | Helm repos, charts, releases |
+| `adapter_kubernetes.go` | Kubernetes proxy + dashboard |
+| `adapter_registries.go` | Container registries |
+| `adapter_settings.go` | Settings + SSL |
+| `adapter_stacks.go` | Edge stacks + regular stacks |
+| `adapter_system.go` | System status + version |
+| `adapter_tags.go` | Environment tags |
+| `adapter_teams.go` | Teams + membership |
+| `adapter_templates.go` | App templates + custom templates |
+| `adapter_users.go` | User accounts |
+| `adapter_webhooks.go` | Webhooks |
+| `access_group.go` | Access groups (edge groups) — uses plain naming |
+| `group.go` | Environment groups — uses plain naming |
+
+> **Note**: `access_group.go` and `group.go` predate the `adapter_` naming convention. They implement the same pattern but are not prefixed.
 
 ## API Domains
 

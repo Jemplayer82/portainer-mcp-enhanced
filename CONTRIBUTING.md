@@ -116,7 +116,7 @@ portainer-mcp/
 
 Architectural decisions are documented in `docs/design/`. Before making significant changes:
 
-1. Review existing decisions in `docs/design_summary.md`
+1. Review existing decisions in `docs/src/content/docs/reference/design-decisions.md`
 2. Create a new record if introducing an architectural change: `YYMMDD-N-short-description.md`
 
 ## Documentation
