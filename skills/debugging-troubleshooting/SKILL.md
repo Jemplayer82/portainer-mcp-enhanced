@@ -58,7 +58,9 @@ func (m *MockPortainerClient) GetUsers() ([]models.User, error) {
     args := m.Called()
     return args.Get(0).([]models.User), args.Error(1)  // panics if Get(0) is nil
 }
+```
 
+```go
 // CORRECT — nil guard prevents panic
 func (m *MockPortainerClient) GetUsers() ([]models.User, error) {
     args := m.Called()

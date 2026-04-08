@@ -114,7 +114,7 @@ portainer-mcp/
 
 ## Design Decisions
 
-Architectural decisions are documented in `docs/design/`. Before making significant changes:
+Architectural decisions are documented in `docs/src/content/docs/reference/design-decisions.md`. Raw decision records live in `docs/design/` with the format `YYMMDD-N-short-description.md`. Before making significant changes:
 
 1. Review existing decisions in `docs/src/content/docs/reference/design-decisions.md`
 2. Create a new record if introducing an architectural change: `YYMMDD-N-short-description.md`

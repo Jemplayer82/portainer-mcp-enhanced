@@ -22,7 +22,7 @@ pnpm run preview    # preview production build locally
 
 ## Directory Structure
 
-```
+```text
 docs/
   src/
     content/

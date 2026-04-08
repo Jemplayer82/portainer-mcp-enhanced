@@ -41,7 +41,7 @@ func (c *PortainerClient) GetUsers() ([]models.User, error) {
 
 ### Adapter File Layout
 
-The client package uses two naming conventions — newer domains use `adapter_<domain>.go`, older ones use plain `<domain>.go`. Both are valid; check what exists before adding a new file.
+The client package has two naming conventions — **new domains must use `adapter_<domain>.go`**. A small set of legacy files use plain `<domain>.go`; reuse that naming only when extending an existing legacy file, never for new domains.
 
 | File | Domain |
 |------|--------|

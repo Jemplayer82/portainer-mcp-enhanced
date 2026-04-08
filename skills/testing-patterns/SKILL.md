@@ -216,7 +216,7 @@ func TestConvertUsers_NilSlice(t *testing.T) {
 }
 ```
 
-This pattern is enforced by `pkg/portainer/models/nil_input_test.go` which runs nil-input checks across all conversion functions.
+This pattern is validated by `pkg/portainer/models/nil_input_test.go`, which contains nil-input checks for conversion functions and should be kept updated as new converters are added.
 
 ## Running Tests
 
