@@ -165,7 +165,7 @@ Write handlers are only registered when `!s.readOnly`. In meta-tools, mark `read
 
 ## Checklist for New Tools
 
-- [ ] YAML definition in `tools.yaml` (array `parameters:` format)
+- [ ] YAML definition in `tools.yaml` — tool as a list item under `tools:`, parameters as an array under `parameters:`
 - [ ] Constant in `schema.go`
 - [ ] Client method in `adapter_<domain>.go` + interface update in `client_interfaces.go`
 - [ ] Model + conversion in `pkg/portainer/models/` (if new data type)

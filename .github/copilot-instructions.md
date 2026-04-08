@@ -14,7 +14,7 @@ applyTo: "**"
 - Build: `make build` → `dist/portainer-mcp-enhanced`. Cross-compile: `make PLATFORM=linux ARCH=amd64 build`.
 - Test: `make test` (unit), `make test-integration` (requires Docker), `make test-all`, `make test-coverage`.
 - Format: `gofmt -s -w .`. Lint: `go vet ./...`. Both must be clean before committing.
-- Docs site: `cd docs && pnpm run dev` (use `pnpm`, not `npm`).
+- Docs site: `cd docs && pnpm install && pnpm run dev` (use `pnpm`, not `npm`).
 
 ## Architecture
 - `internal/mcp/` — handlers, metatool system, `client_interfaces.go`, `schema.go`, `server.go`.
