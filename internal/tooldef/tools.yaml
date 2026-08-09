@@ -580,7 +580,7 @@ tools:
         type: number
         required: true
       - name: pullImage
-        description: "Set to true to pull the latest container images before redeploying"
+        description: "Set to true to force a real registry pull of every mutable-tag image in the stack before redeploying (works around Portainer sometimes reporting a healthy redeploy while silently keeping a stale cached image). The response includes an 'imagePulls' array reporting what was actually pulled; private-registry images may fail here even though Portainer's own pull would still succeed with its stored credentials."
         type: boolean
         required: false
       - name: prune

@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -876,8 +879,10 @@ func TestHandleRedeployStackGit(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:      "successful redeploy with all params",
-			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": true, "prune": true},
+			// pullImage:true is covered separately by TestHandleRedeployStackGit_ForcePull,
+			// which also mocks the force-pull calls this now triggers.
+			name:      "successful redeploy with prune",
+			params:    map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": false, "prune": true},
 			mockStack: models.RegularStack{ID: 1, Name: "redeployed"},
 		},
 		{
@@ -955,6 +960,225 @@ func TestHandleRedeployStackGit(t *testing.T) {
 			mockClient.AssertExpectations(t)
 		})
 	}
+}
+
+// fakeImageCreateResponse builds an *http.Response resembling a Docker Engine
+// POST /images/create streamed response, for mocking ProxyDockerRequest.
+func fakeImageCreateResponse(statusCode int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: statusCode,
+		Status:     http.StatusText(statusCode),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+// TestHandleRedeployStackGit_ForcePull verifies the force-pull behavior that
+// HandleRedeployStackGit performs ahead of the actual redeploy when
+// pullImage=true: reading the stack file, pulling each mutable-tag image via
+// the Docker proxy, and surfacing the outcome in the response without ever
+// blocking the redeploy itself.
+func TestHandleRedeployStackGit_ForcePull(t *testing.T) {
+	const composeOneImage = "services:\n  web:\n    image: ghcr.io/example/app:latest\n"
+	const composeTwoImages = "services:\n  web:\n    image: ghcr.io/example/app:latest\n  db:\n    image: postgres:16\n  worker:\n    build: .\n  pinned:\n    image: redis@sha256:deadbeef\n"
+
+	params := map[string]any{"id": float64(1), "environmentId": float64(2), "pullImage": true}
+	redeployOpts := models.RedeployStackGitOptions{EndpointID: 2, PullImage: true, Prune: false}
+	mockStack := models.RegularStack{ID: 1, Name: "redeployed"}
+
+	t.Run("successful pull is reported and redeploy proceeds", func(t *testing.T) {
+		mockClient := &MockPortainerClient{}
+		mockClient.On("GetStackFile", 1).Return(composeOneImage, nil)
+		mockClient.On("ProxyDockerRequest", mock.MatchedBy(func(opts models.DockerProxyRequestOptions) bool {
+			return opts.EnvironmentID == 2 && opts.Method == http.MethodPost && opts.Path == "/images/create" &&
+				opts.QueryParams["fromImage"] == "ghcr.io/example/app" && opts.QueryParams["tag"] == "latest"
+		})).Return(fakeImageCreateResponse(http.StatusOK, `{"status":"Pulling from example/app"}`+"\n"+`{"status":"Status: Downloaded newer image for ghcr.io/example/app:latest"}`), nil)
+		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
+
+		s := &PortainerMCPServer{cli: mockClient}
+		req := mcp.CallToolRequest{}
+		req.Params.Arguments = params
+		result, err := s.HandleRedeployStackGit()(context.Background(), req)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError)
+
+		var resp redeployStackGitResponse
+		assert.NoError(t, json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp))
+		assert.Equal(t, mockStack.ID, resp.ID)
+		if assert.Len(t, resp.ImagePulls, 1) {
+			assert.Equal(t, "ghcr.io/example/app:latest", resp.ImagePulls[0].Image)
+			assert.True(t, resp.ImagePulls[0].Pulled)
+			assert.Equal(t, "Status: Downloaded newer image for ghcr.io/example/app:latest", resp.ImagePulls[0].Message)
+		}
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("pull failure is reported but does not block redeploy", func(t *testing.T) {
+		mockClient := &MockPortainerClient{}
+		mockClient.On("GetStackFile", 1).Return(composeOneImage, nil)
+		mockClient.On("ProxyDockerRequest", mock.Anything).
+			Return(fakeImageCreateResponse(http.StatusNotFound, `{"error":"pull access denied for ghcr.io/example/app"}`), nil)
+		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
+
+		s := &PortainerMCPServer{cli: mockClient}
+		req := mcp.CallToolRequest{}
+		req.Params.Arguments = params
+		result, err := s.HandleRedeployStackGit()(context.Background(), req)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError, "a failed force-pull must not fail the whole redeploy")
+
+		var resp redeployStackGitResponse
+		assert.NoError(t, json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp))
+		if assert.Len(t, resp.ImagePulls, 1) {
+			assert.False(t, resp.ImagePulls[0].Pulled)
+			assert.Contains(t, resp.ImagePulls[0].Message, "pull access denied")
+		}
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("stack file read failure falls back to old behavior", func(t *testing.T) {
+		mockClient := &MockPortainerClient{}
+		mockClient.On("GetStackFile", 1).Return("", fmt.Errorf("not found"))
+		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
+
+		s := &PortainerMCPServer{cli: mockClient}
+		req := mcp.CallToolRequest{}
+		req.Params.Arguments = params
+		result, err := s.HandleRedeployStackGit()(context.Background(), req)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError)
+
+		// No imagePulls key at all when the stack file couldn't be read --
+		// ProxyDockerRequest must never be called in this case.
+		assert.NotContains(t, result.Content[0].(mcp.TextContent).Text, "imagePulls")
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("multiple services: build-only and digest-pinned images are skipped", func(t *testing.T) {
+		mockClient := &MockPortainerClient{}
+		mockClient.On("GetStackFile", 1).Return(composeTwoImages, nil)
+		mockClient.On("ProxyDockerRequest", mock.Anything).
+			Return(fakeImageCreateResponse(http.StatusOK, `{"status":"Status: Image is up to date"}`), nil)
+		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
+
+		s := &PortainerMCPServer{cli: mockClient}
+		req := mcp.CallToolRequest{}
+		req.Params.Arguments = params
+		result, err := s.HandleRedeployStackGit()(context.Background(), req)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError)
+
+		var resp redeployStackGitResponse
+		assert.NoError(t, json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp))
+		// Only "web" and "db" have a mutable-tag image; "worker" builds locally
+		// and "pinned" is already digest-pinned, so neither triggers a pull.
+		assert.Len(t, resp.ImagePulls, 2)
+		mockClient.AssertExpectations(t)
+	})
+}
+
+// TestExtractComposeImages verifies compose YAML image-reference extraction.
+func TestExtractComposeImages(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    []string
+	}{
+		{
+			name:    "single service with image",
+			content: "services:\n  web:\n    image: nginx:latest\n",
+			want:    []string{"nginx:latest"},
+		},
+		{
+			name:    "build-only service is skipped",
+			content: "services:\n  worker:\n    build: .\n",
+			want:    []string{},
+		},
+		{
+			name:    "digest-pinned image is excluded",
+			content: "services:\n  web:\n    image: nginx@sha256:abcdef1234567890\n",
+			want:    []string{},
+		},
+		{
+			name:    "invalid yaml yields no images",
+			content: "not: valid: yaml: [",
+			want:    nil,
+		},
+		{
+			name:    "empty content yields no images",
+			content: "",
+			want:    []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractComposeImages(tt.content)
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
+// TestSplitImageRef verifies image reference parsing into repo and tag.
+func TestSplitImageRef(t *testing.T) {
+	tests := []struct {
+		name     string
+		image    string
+		wantRepo string
+		wantTag  string
+	}{
+		{name: "no tag defaults to latest", image: "redis", wantRepo: "redis", wantTag: "latest"},
+		{name: "explicit tag", image: "redis:7", wantRepo: "redis", wantTag: "7"},
+		{name: "namespaced repo with tag", image: "ghcr.io/example/app:v1.2.3", wantRepo: "ghcr.io/example/app", wantTag: "v1.2.3"},
+		{name: "registry host:port without tag", image: "myregistry:5000/repo", wantRepo: "myregistry:5000/repo", wantTag: "latest"},
+		{name: "registry host:port with tag", image: "myregistry:5000/repo:tag", wantRepo: "myregistry:5000/repo", wantTag: "tag"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, tag := splitImageRef(tt.image)
+			assert.Equal(t, tt.wantRepo, repo)
+			assert.Equal(t, tt.wantTag, tag)
+		})
+	}
+}
+
+// TestReadImageCreateStatus verifies parsing of the Docker Engine
+// POST /images/create streamed response.
+func TestReadImageCreateStatus(t *testing.T) {
+	t.Run("success stream returns last status", func(t *testing.T) {
+		body := `{"status":"Pulling from library/redis"}` + "\n" + `{"status":"Status: Downloaded newer image for redis:latest"}`
+		status, err := readImageCreateStatus(fakeImageCreateResponse(http.StatusOK, body))
+		assert.NoError(t, err)
+		assert.Equal(t, "Status: Downloaded newer image for redis:latest", status)
+	})
+
+	t.Run("error field in stream is surfaced", func(t *testing.T) {
+		body := `{"errorDetail":{"message":"pull access denied"},"error":"pull access denied"}`
+		status, err := readImageCreateStatus(fakeImageCreateResponse(http.StatusOK, body))
+		assert.Error(t, err)
+		assert.Contains(t, status, "pull access denied")
+	})
+
+	t.Run("non-2xx status without an error field is treated as failure", func(t *testing.T) {
+		_, err := readImageCreateStatus(fakeImageCreateResponse(http.StatusUnauthorized, `{"message":"unauthorized"}`))
+		assert.Error(t, err)
+	})
+
+	t.Run("garbage lines are ignored", func(t *testing.T) {
+		body := "not json\n" + `{"status":"Status: Image is up to date"}` + "\nmore garbage"
+		status, err := readImageCreateStatus(fakeImageCreateResponse(http.StatusOK, body))
+		assert.NoError(t, err)
+		assert.Equal(t, "Status: Image is up to date", status)
+	})
+
+	t.Run("empty body with 2xx status is an error", func(t *testing.T) {
+		_, err := readImageCreateStatus(fakeImageCreateResponse(http.StatusOK, ""))
+		assert.Error(t, err)
+	})
 }
 
 // TestHandleStartStack verifies the HandleStartStack MCP tool handler.
