@@ -340,7 +340,10 @@ func (s *PortainerMCPServer) HandleRedeployStackGit() server.ToolHandlerFunc {
 
 		var imagePulls []imagePullResult
 		if pullImage {
-			composeContent, fileErr := s.cli.GetStackFile(id)
+			// redeployStackGit operates on regular (non-edge) stacks, so the
+			// compose content must come from InspectStackFile -- GetStackFile
+			// hits the edge-stack-only API and fails for a regular stack ID.
+			composeContent, fileErr := s.cli.InspectStackFile(id)
 			if fileErr != nil {
 				log.Warn().Err(fileErr).Int("id", id).
 					Msg("could not read stack file to force-pull images before git redeploy; falling back to Portainer's built-in pullImage")

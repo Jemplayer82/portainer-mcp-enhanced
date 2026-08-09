@@ -987,7 +987,7 @@ func TestHandleRedeployStackGit_ForcePull(t *testing.T) {
 
 	t.Run("successful pull is reported and redeploy proceeds", func(t *testing.T) {
 		mockClient := &MockPortainerClient{}
-		mockClient.On("GetStackFile", 1).Return(composeOneImage, nil)
+		mockClient.On("InspectStackFile", 1).Return(composeOneImage, nil)
 		mockClient.On("ProxyDockerRequest", mock.MatchedBy(func(opts models.DockerProxyRequestOptions) bool {
 			return opts.EnvironmentID == 2 && opts.Method == http.MethodPost && opts.Path == "/images/create" &&
 				opts.QueryParams["fromImage"] == "ghcr.io/example/app" && opts.QueryParams["tag"] == "latest"
@@ -1015,7 +1015,7 @@ func TestHandleRedeployStackGit_ForcePull(t *testing.T) {
 
 	t.Run("pull failure is reported but does not block redeploy", func(t *testing.T) {
 		mockClient := &MockPortainerClient{}
-		mockClient.On("GetStackFile", 1).Return(composeOneImage, nil)
+		mockClient.On("InspectStackFile", 1).Return(composeOneImage, nil)
 		mockClient.On("ProxyDockerRequest", mock.Anything).
 			Return(fakeImageCreateResponse(http.StatusNotFound, `{"error":"pull access denied for ghcr.io/example/app"}`), nil)
 		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
@@ -1039,7 +1039,7 @@ func TestHandleRedeployStackGit_ForcePull(t *testing.T) {
 
 	t.Run("stack file read failure falls back to old behavior", func(t *testing.T) {
 		mockClient := &MockPortainerClient{}
-		mockClient.On("GetStackFile", 1).Return("", fmt.Errorf("not found"))
+		mockClient.On("InspectStackFile", 1).Return("", fmt.Errorf("not found"))
 		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
 
 		s := &PortainerMCPServer{cli: mockClient}
@@ -1058,7 +1058,7 @@ func TestHandleRedeployStackGit_ForcePull(t *testing.T) {
 
 	t.Run("multiple services: build-only and digest-pinned images are skipped", func(t *testing.T) {
 		mockClient := &MockPortainerClient{}
-		mockClient.On("GetStackFile", 1).Return(composeTwoImages, nil)
+		mockClient.On("InspectStackFile", 1).Return(composeTwoImages, nil)
 		mockClient.On("ProxyDockerRequest", mock.Anything).
 			Return(fakeImageCreateResponse(http.StatusOK, `{"status":"Status: Image is up to date"}`), nil)
 		mockClient.On("RedeployStackGit", 1, redeployOpts).Return(mockStack, nil)
