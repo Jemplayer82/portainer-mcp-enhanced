@@ -41,7 +41,7 @@ make inspector
 | `--token` | API authentication token (required) |
 | `--tools` | Path to tools.yaml file (optional, uses embedded default) |
 | `--read-only` | Disable write operations |
-| `--granular-tools` | Expose all 98 individual tools instead of 15 meta-tools |
+| `--granular-tools` | Expose all 100 individual tools instead of 15 meta-tools |
 | `--disable-version-check` | Skip Portainer version compatibility check |
 | `--skip-tls-verify` | Skip TLS certificate verification |
 
@@ -76,7 +76,7 @@ tools.yaml                  Declarative tool definitions (v1.2 format, embedded 
 
 ### Meta-tool System
 
-`metatool_registry.go` defines 15 groups that aggregate 98 tools behind an `action` enum parameter. Default mode uses meta-tools; `--granular-tools` exposes individual tools.
+`metatool_registry.go` defines 15 groups that aggregate 100 tools behind an `action` enum parameter. Default mode uses meta-tools; `--granular-tools` exposes individual tools.
 
 Groups: `manage_environments`, `manage_stacks`, `manage_access_groups`, `manage_users`, `manage_teams`, `manage_docker`, `manage_kubernetes`, `manage_helm`, `manage_registries`, `manage_templates`, `manage_backups`, `manage_webhooks`, `manage_edge`, `manage_settings`, `manage_system`.
 

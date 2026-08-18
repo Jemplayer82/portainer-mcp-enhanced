@@ -8,7 +8,7 @@ applyTo: "**"
 ## Project
 - Go 1.24+ MCP server bridging AI assistants to the Portainer API. Module: `github.com/jmrplens/portainer-mcp-enhanced`.
 - MCP SDK: `github.com/mark3labs/mcp-go` v0.32.0. CGO_ENABLED=0 — statically linked binary.
-- 98 tools grouped into 15 meta-tools by default. `--granular-tools` exposes all individually.
+- 100 tools grouped into 15 meta-tools by default. `--granular-tools` exposes all individually.
 
 ## Build & Test
 - Build: `make build` → `dist/portainer-mcp-enhanced`. Cross-compile: `make PLATFORM=linux ARCH=amd64 build`.

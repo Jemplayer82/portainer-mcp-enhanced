@@ -20,10 +20,13 @@ All notable changes to this project are documented in this file.
 - Role listing with authorizations
 - App template listing and file retrieval
 - Comprehensive documentation (README, CONTRIBUTING, CHANGELOG, API reference)
+- **`update_regular_stack`**: new action for standalone (non-edge) stacks that were *not* deployed from a git repository — pushes new compose content and/or triggers a redeploy with native `prune`/`pullImage` support. Previously there was no way to update or force-pull such a stack at all: `update_stack` only ever called Portainer's edge-stack API, and `update_stack_git`/`redeploy_stack_git` require the stack to actually have a git config, returning a 400 (`stackUpdateGitBadRequest`/`stackGitRedeployBadRequest`) otherwise.
 
 ### Fixed
 - **tools.yaml schema keys**: Corrected 12 Helm/Edge tools using `inputSchema:` to `parameters:` — those tools were silently registered with zero parameters
 - **Integer overflow in parameter parsing**: Added bounds checking in `GetInt()` and `parseArrayOfIntegers()` to prevent silent wraparound on extreme float64 values
+- **Silent stale image on git redeploy**: `redeploy_stack_git` with `pullImage:true` could report a successful, healthy redeploy (new container ID, correct git commit hash) while silently leaving the old cached image running for mutable-tag images — Portainer's own `pullImage` flag on that endpoint doesn't reliably force a registry pull. The handler now force-pulls every mutable-tag image the stack's compose file references via the Docker Engine API before calling redeploy, and reports the outcome as an `imagePulls` array in the response (digest-pinned images are skipped since they can't go stale; a per-image pull failure is reported, not fatal, since private-registry images may need credentials this raw pull doesn't have).
+- **`manage_stacks` edge/regular-stack ambiguity**: clarified which actions are edge-only (`update_stack`, `get_stack_file`, `create_stack`) vs regular-stack-only (`inspect_stack_file`, `create_regular_stack`, `update_regular_stack`, `update_stack_git`, `redeploy_stack_git`, `start_stack`, `stop_stack`, `migrate_stack`) in the meta-tool description — this split wasn't documented anywhere and was the direct cause of the two issues above.
 
 ### Changed
 - Updated tools.yaml version to v1.2

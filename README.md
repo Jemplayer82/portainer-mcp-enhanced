@@ -9,7 +9,7 @@
 ![Go Version](https://img.shields.io/github/go-mod/go-version/jmrplens/portainer-mcp-enhanced)
 ![License](https://img.shields.io/github/license/jmrplens/portainer-mcp-enhanced)
 ![Portainer](https://img.shields.io/badge/Portainer-2.39.1-blue)
-![MCP Tools](https://img.shields.io/badge/MCP_Tools-98-green)
+![MCP Tools](https://img.shields.io/badge/MCP_Tools-100-green)
 
 [Documentation](https://jmrplens.github.io/portainer-mcp-enhanced/) · [Quickstart](#quickstart) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
 
@@ -17,7 +17,7 @@
 
 ---
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that connects AI assistants to [Portainer](https://www.portainer.io/) — exposing **98 tools** covering the complete Portainer API. Manage environments, stacks, users, teams, registries, Kubernetes, Helm, Docker, edge computing, backups, and more through natural language.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that connects AI assistants to [Portainer](https://www.portainer.io/) — exposing **100 tools** covering the complete Portainer API. Manage environments, stacks, users, teams, registries, Kubernetes, Helm, Docker, edge computing, backups, and more through natural language.
 
 <details open>
 <summary><b>🖥️ System & Docker Dashboard</b></summary>
@@ -148,20 +148,20 @@ Go to **Cursor Settings → MCP** and add:
 | `-token` | Portainer API token | **Yes** | — |
 | `-tools` | Path to custom tools.yaml | No | Embedded |
 | `-read-only` | Disable all write/delete operations | No | `false` |
-| `-granular-tools` | Register all 98 individual tools instead of 15 grouped meta-tools | No | `false` |
+| `-granular-tools` | Register all 100 individual tools instead of 15 grouped meta-tools | No | `false` |
 | `-disable-version-check` | Skip Portainer version validation | No | `false` |
 | `-skip-tls-verify` | Skip TLS certificate verification | No | `false` |
 
 ### Meta-Tools (Default Mode)
 
-By default the server registers **15 grouped meta-tools** instead of the 98 individual granular tools. Each meta-tool covers a functional domain and exposes an `action` parameter (enum) that routes to the appropriate handler.
+By default the server registers **15 grouped meta-tools** instead of the 100 individual granular tools. Each meta-tool covers a functional domain and exposes an `action` parameter (enum) that routes to the appropriate handler.
 
 This dramatically reduces the tool-selection surface for LLMs while preserving 100% of the underlying functionality.
 
 | Meta-Tool | Actions | Description |
 |-----------|---------|-------------|
 | `manage_environments` | 16 | Environments, environment groups, tags |
-| `manage_stacks` | 13 | Regular and compose stacks |
+| `manage_stacks` | 15 | Regular and compose stacks |
 | `manage_access_groups` | 7 | Access group CRUD and user/team access policies |
 | `manage_users` | 5 | User CRUD and role management |
 | `manage_teams` | 6 | Teams and team membership |
@@ -176,7 +176,7 @@ This dramatically reduces the tool-selection surface for LLMs while preserving 1
 | `manage_settings` | 5 | Server settings and SSL |
 | `manage_system` | 5 | Version, status, MOTD, roles, auth |
 
-To use the original 98 individual tools, pass `--granular-tools`. See the [Meta-Tools Guide](https://jmrplens.github.io/portainer-mcp-enhanced/guides/meta-tools/) for the full action reference.
+To use the original 100 individual tools, pass `--granular-tools`. See the [Meta-Tools Guide](https://jmrplens.github.io/portainer-mcp-enhanced/guides/meta-tools/) for the full action reference.
 
 ### Read-Only Mode
 
