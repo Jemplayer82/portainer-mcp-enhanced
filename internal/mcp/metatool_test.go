@@ -63,7 +63,7 @@ func listRegisteredTools(t *testing.T, srv *server.MCPServer) []string {
 }
 
 // TestMetaToolDefinitionsCount verifies that metaToolDefinitions returns
-// exactly 15 groups with 99 total actions.
+// exactly 15 groups with 100 total actions.
 func TestMetaToolDefinitionsCount(t *testing.T) {
 	defs := metaToolDefinitions()
 	assert.Equal(t, 15, len(defs), "expected 15 meta-tool groups")
@@ -72,7 +72,7 @@ func TestMetaToolDefinitionsCount(t *testing.T) {
 	for _, def := range defs {
 		totalActions += len(def.actions)
 	}
-	assert.Equal(t, 99, totalActions, "expected 99 total actions across all meta-tools")
+	assert.Equal(t, 100, totalActions, "expected 100 total actions across all meta-tools")
 }
 
 // TestMetaToolUniqueActionNames verifies that all action names within each
@@ -542,7 +542,8 @@ func TestMetaToolRegistryActionNames(t *testing.T) {
 		},
 		"manage_stacks": {
 			"list_stacks", "list_regular_stacks", "get_stack", "get_stack_file",
-			"inspect_stack_file", "create_stack", "create_regular_stack", "update_stack", "delete_stack",
+			"inspect_stack_file", "create_stack", "create_regular_stack", "update_stack",
+			"update_regular_stack", "delete_stack",
 			"update_stack_git", "redeploy_stack_git", "start_stack", "stop_stack",
 			"migrate_stack",
 		},

@@ -300,3 +300,35 @@ func (c *PortainerClient) CreateRegularStack(name, file string, endpointID int, 
 
 	return models.ConvertRegularStack(raw), nil
 }
+
+// UpdateRegularStack updates a standalone (non-edge) stack that was not
+// deployed from a git repository -- the regular-stack counterpart to
+// UpdateStackGit/RedeployStackGit, which only work for git-tracked stacks.
+//
+// Parameters:
+//   - id: The ID of the stack to update
+//   - opts: Update options (environment ID, new compose content, env vars, prune, pullImage)
+//
+// Returns:
+//   - The updated RegularStack
+//   - An error if the operation fails
+func (c *PortainerClient) UpdateRegularStack(id int, opts models.UpdateRegularStackOptions) (models.RegularStack, error) {
+	pairs := make([]*apimodels.PortainerPair, len(opts.Env))
+	for i, e := range opts.Env {
+		pairs[i] = &apimodels.PortainerPair{Name: e.Name, Value: e.Value}
+	}
+
+	body := &apimodels.StacksUpdateStackPayload{
+		StackFileContent: opts.StackFileContent,
+		Env:              pairs,
+		Prune:            opts.Prune,
+		PullImage:        opts.PullImage,
+	}
+
+	raw, err := c.cli.StackUpdate(int64(id), int64(opts.EndpointID), body)
+	if err != nil {
+		return models.RegularStack{}, fmt.Errorf("failed to update regular stack: %w", err)
+	}
+
+	return models.ConvertRegularStack(raw), nil
+}

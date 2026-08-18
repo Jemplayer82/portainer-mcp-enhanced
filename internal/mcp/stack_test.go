@@ -1527,3 +1527,115 @@ func TestHandleCreateRegularStack(t *testing.T) {
 		})
 	}
 }
+
+// TestHandleUpdateRegularStack verifies the HandleUpdateRegularStack MCP tool handler.
+func TestHandleUpdateRegularStack(t *testing.T) {
+	mockStack := models.RegularStack{ID: 74, Name: "drafting-table", EndpointID: 3}
+
+	tests := []struct {
+		name        string
+		params      map[string]any
+		mockOpts    models.UpdateRegularStackOptions
+		mockStack   models.RegularStack
+		mockError   error
+		expectError bool
+	}{
+		{
+			name: "successful update with pullImage and prune",
+			params: map[string]any{
+				"id":            float64(74),
+				"environmentId": float64(3),
+				"file":          "services:\n  web:\n    image: nginx",
+				"pullImage":     true,
+				"prune":         true,
+			},
+			mockOpts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx",
+				Env: []models.StackEnvVar{}, Prune: true, PullImage: true,
+			},
+			mockStack: mockStack,
+		},
+		{
+			name: "successful update with env, no pull/prune",
+			params: map[string]any{
+				"id":            float64(74),
+				"environmentId": float64(3),
+				"file":          "services:\n  web:\n    image: nginx",
+				"env":           []any{map[string]any{"name": "FOO", "value": "bar"}},
+			},
+			mockOpts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx",
+				Env: []models.StackEnvVar{{Name: "FOO", Value: "bar"}},
+			},
+			mockStack: mockStack,
+		},
+		{
+			name:        "missing id",
+			params:      map[string]any{"environmentId": float64(3), "file": "services:\n  web:\n    image: nginx"},
+			expectError: true,
+		},
+		{
+			name:        "invalid id",
+			params:      map[string]any{"id": float64(0), "environmentId": float64(3), "file": "services:\n  web:\n    image: nginx"},
+			expectError: true,
+		},
+		{
+			name:        "missing environmentId",
+			params:      map[string]any{"id": float64(74), "file": "services:\n  web:\n    image: nginx"},
+			expectError: true,
+		},
+		{
+			name:        "invalid environmentId",
+			params:      map[string]any{"id": float64(74), "environmentId": float64(0), "file": "services:\n  web:\n    image: nginx"},
+			expectError: true,
+		},
+		{
+			name:        "missing file",
+			params:      map[string]any{"id": float64(74), "environmentId": float64(3)},
+			expectError: true,
+		},
+		{
+			name:        "invalid compose yaml",
+			params:      map[string]any{"id": float64(74), "environmentId": float64(3), "file": "not: valid: yaml: ["},
+			expectError: true,
+		},
+		{
+			name: "api error (e.g. stack not found)",
+			params: map[string]any{
+				"id":            float64(74),
+				"environmentId": float64(3),
+				"file":          "services:\n  web:\n    image: nginx",
+			},
+			mockOpts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx", Env: []models.StackEnvVar{},
+			},
+			mockError:   fmt.Errorf("stack not found"),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockPortainerClient{}
+			id, hasID := tt.params["id"].(float64)
+			envID, hasEnvID := tt.params["environmentId"].(float64)
+			file, hasFile := tt.params["file"].(string)
+			if hasID && id > 0 && hasEnvID && envID > 0 && hasFile && file != "" && file != "not: valid: yaml: [" {
+				mockClient.On("UpdateRegularStack", int(id), tt.mockOpts).Return(tt.mockStack, tt.mockError)
+			}
+
+			s := &PortainerMCPServer{cli: mockClient}
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = tt.params
+			result, err := s.HandleUpdateRegularStack()(context.Background(), req)
+
+			assert.NoError(t, err)
+			if tt.expectError {
+				assert.True(t, result.IsError)
+			} else {
+				assert.False(t, result.IsError)
+			}
+			mockClient.AssertExpectations(t)
+		})
+	}
+}

@@ -35,6 +35,7 @@ func (s *PortainerMCPServer) AddStackFeatures() {
 		s.addToolIfExists(ToolStopStack, s.HandleStopStack())
 		s.addToolIfExists(ToolMigrateStack, s.HandleMigrateStack())
 		s.addToolIfExists(ToolCreateRegularStack, s.HandleCreateRegularStack())
+		s.addToolIfExists(ToolUpdateRegularStack, s.HandleUpdateRegularStack())
 	}
 }
 
@@ -670,6 +671,74 @@ func (s *PortainerMCPServer) HandleCreateRegularStack() server.ToolHandlerFunc {
 		stack, err := s.cli.CreateRegularStack(name, file, endpointID, env)
 		if err != nil {
 			return mcp.NewToolResultErrorFromErr("failed to create regular stack", err), nil
+		}
+
+		return jsonResult(stack, "failed to marshal stack")
+	}
+}
+
+// HandleUpdateRegularStack returns an MCP tool handler that updates a
+// standalone (non-edge) stack's compose content, env, and/or triggers a
+// redeploy with prune/pullImage. Use this for stacks that were not deployed
+// from a git repository -- redeployStackGit/updateStackGit only work for
+// git-tracked stacks and return a 400 (stackGitRedeployBadRequest /
+// stackUpdateGitBadRequest) otherwise.
+func (s *PortainerMCPServer) HandleUpdateRegularStack() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		parser := toolgen.NewParameterParser(request)
+
+		id, err := parser.GetInt("id", true)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid id parameter", err), nil
+		}
+		if err := validatePositiveID("id", id); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		endpointID, err := parser.GetInt("environmentId", true)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid environmentId parameter", err), nil
+		}
+		if err := validatePositiveID("environmentId", endpointID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		file, err := parser.GetString("file", true)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid file parameter", err), nil
+		}
+		if err := validateComposeYAML(file); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		rawEnv, err := parser.GetArrayOfObjects("env", false)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid env parameter", err), nil
+		}
+		env, err := parseStackEnvVars(rawEnv)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid env parameter", err), nil
+		}
+
+		prune, err := parser.GetBoolean("prune", false)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid prune parameter", err), nil
+		}
+
+		pullImage, err := parser.GetBoolean("pullImage", false)
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("invalid pullImage parameter", err), nil
+		}
+
+		stack, err := s.cli.UpdateRegularStack(id, models.UpdateRegularStackOptions{
+			EndpointID:       endpointID,
+			StackFileContent: file,
+			Env:              env,
+			Prune:            prune,
+			PullImage:        pullImage,
+		})
+		if err != nil {
+			return mcp.NewToolResultErrorFromErr("failed to update regular stack", err), nil
 		}
 
 		return jsonResult(stack, "failed to marshal stack")

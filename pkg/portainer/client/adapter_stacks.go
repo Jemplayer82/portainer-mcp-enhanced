@@ -109,3 +109,16 @@ func (a *portainerAPIAdapter) StackCreateStandalone(endpointID int64, body *apim
 	}
 	return resp.Payload, nil
 }
+
+// StackUpdate updates the compose file content, env, and/or triggers a
+// redeploy (with optional prune/pullImage) of a standalone (non-edge) stack.
+// This is the regular-stack counterpart to StackUpdateGit/StackGitRedeploy --
+// use it for stacks that were not deployed from a git repository.
+func (a *portainerAPIAdapter) StackUpdate(id int64, endpointID int64, body *apimodels.StacksUpdateStackPayload) (*apimodels.PortainereeStack, error) {
+	params := stacks.NewStackUpdateParams().WithID(id).WithEndpointID(endpointID).WithBody(body)
+	resp, err := a.swagger.Stacks.StackUpdate(params, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update stack: %w", err)
+	}
+	return resp.Payload, nil
+}

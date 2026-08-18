@@ -1,6 +1,6 @@
 # portainer-mcp-enhanced — Project Intelligence
 
-MCP (Model Context Protocol) server in Go that connects AI assistants to Portainer, enabling container management through natural language. Exposes 98 granular tools (grouped into 15 meta-tools by default) covering environments, stacks, Docker, Kubernetes, users, teams, registries, and more.
+MCP (Model Context Protocol) server in Go that connects AI assistants to Portainer, enabling container management through natural language. Exposes 100 granular tools (grouped into 15 meta-tools by default) covering environments, stacks, Docker, Kubernetes, users, teams, registries, and more.
 
 > This file is the canonical source of project intelligence. `CLAUDE.md` and `.github/copilot-instructions.md` are derived from it.
 

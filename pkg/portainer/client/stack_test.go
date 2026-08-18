@@ -720,3 +720,61 @@ func TestCreateRegularStack(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateRegularStack(t *testing.T) {
+	now := time.Now().Unix()
+	tests := []struct {
+		name          string
+		stackID       int
+		opts          models.UpdateRegularStackOptions
+		mockResult    *apimodels.PortainereeStack
+		mockError     error
+		expectedError bool
+	}{
+		{
+			name:    "successful update with pullImage and prune",
+			stackID: 74,
+			opts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx",
+				Prune: true, PullImage: true,
+			},
+			mockResult: &apimodels.PortainereeStack{ID: 74, Name: "drafting-table", EndpointID: 3, CreationDate: now},
+		},
+		{
+			name:    "successful update with env",
+			stackID: 74,
+			opts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx",
+				Env: []models.StackEnvVar{{Name: "FOO", Value: "bar"}},
+			},
+			mockResult: &apimodels.PortainereeStack{ID: 74, Name: "drafting-table", EndpointID: 3, CreationDate: now},
+		},
+		{
+			name:    "API error",
+			stackID: 74,
+			opts: models.UpdateRegularStackOptions{
+				EndpointID: 3, StackFileContent: "services:\n  web:\n    image: nginx",
+			},
+			mockError:     errors.New("failed to update stack"),
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockAPI := new(MockPortainerAPI)
+			mockAPI.On("StackUpdate", int64(tt.stackID), int64(tt.opts.EndpointID), mock.AnythingOfType("*models.StacksUpdateStackPayload")).Return(tt.mockResult, tt.mockError)
+
+			c := &PortainerClient{cli: mockAPI}
+			result, err := c.UpdateRegularStack(tt.stackID, tt.opts)
+
+			if tt.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.mockResult.ID, int64(result.ID))
+			}
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}

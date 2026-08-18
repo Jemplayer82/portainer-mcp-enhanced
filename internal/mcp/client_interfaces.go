@@ -73,6 +73,7 @@ type StackClient interface {
 	StopStack(id int, endpointID int) (models.RegularStack, error)
 	MigrateStack(id int, endpointID int, targetEndpointID int, name string) (models.RegularStack, error)
 	CreateRegularStack(name string, file string, endpointID int, env []models.StackEnvVar) (models.RegularStack, error)
+	UpdateRegularStack(id int, opts models.UpdateRegularStackOptions) (models.RegularStack, error)
 }
 
 // TeamClient manages teams and their membership.

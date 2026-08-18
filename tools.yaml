@@ -686,6 +686,47 @@ tools:
       idempotentHint: false
       openWorldHint: false
 
+  - name: updateRegularStack
+    description: "Update a standalone (non-edge) stack that was NOT deployed from a git repository -- pushes new compose content and/or triggers a redeploy with prune/pullImage. Use 'inspectStackFile' first to get the current content if you only want to force a pull/prune without changing it. If the stack HAS a git config, use 'updateStackGit'/'redeployStackGit' instead. Using the wrong one returns a 400 (stackUpdateGitBadRequest / stackGitRedeployBadRequest for the git actions; this action is the fix for that on non-git stacks)."
+    parameters:
+      - name: id
+        description: "Numeric ID of the regular stack to update"
+        type: number
+        required: true
+      - name: environmentId
+        description: "Numeric ID of the environment where the stack is deployed"
+        type: number
+        required: true
+      - name: file
+        description: >-
+          New content of the stack file. The file must be a valid
+          docker-compose.yml file. Pass the current content unchanged (see
+          'inspectStackFile') if you only want prune/pullImage to take effect.
+        type: string
+        required: true
+      - name: env
+        description: >-
+          Environment variables for the stack. Array of objects with 'name' and
+          'value' string fields. Example: [{"name": "FOO", "value": "bar"}]
+        type: array
+        required: false
+        items:
+          type: object
+      - name: prune
+        description: "Set to true to remove services no longer referenced (Swarm stacks only)"
+        type: boolean
+        required: false
+      - name: pullImage
+        description: "Set to true to force a real registry pull of the current image tag even if it's already the latest -- this is Portainer's native fix for the same silent-stale-image problem that affects git-based redeploys."
+        type: boolean
+        required: false
+    annotations:
+      title: Update Regular Stack
+      readOnlyHint: false
+      destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
+
   # === TAGS (3 tools) === #
   # Manage environment tags for organizing and filtering environments.
   - name: createEnvironmentTag

@@ -66,6 +66,19 @@ type RedeployStackGitOptions struct {
 	Prune      bool
 }
 
+// UpdateRegularStackOptions configures an update to a standalone (non-edge)
+// stack that was not deployed from a git repository. This is the
+// regular-stack counterpart to UpdateStackGitOptions/RedeployStackGitOptions
+// -- StackFileContent may be left empty to keep the stack's existing compose
+// content unchanged while still triggering a redeploy with Prune/PullImage.
+type UpdateRegularStackOptions struct {
+	EndpointID       int
+	StackFileContent string
+	Env              []StackEnvVar
+	Prune            bool
+	PullImage        bool
+}
+
 // StackEnvVar represents an environment variable for a standalone (non-edge) stack.
 type StackEnvVar struct {
 	Name  string

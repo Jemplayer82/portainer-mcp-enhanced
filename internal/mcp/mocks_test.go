@@ -288,6 +288,14 @@ func (m *MockPortainerClient) CreateRegularStack(name string, file string, endpo
 	return args.Get(0).(models.RegularStack), args.Error(1)
 }
 
+func (m *MockPortainerClient) UpdateRegularStack(id int, opts models.UpdateRegularStackOptions) (models.RegularStack, error) {
+	args := m.Called(id, opts)
+	if args.Get(0) == nil {
+		return models.RegularStack{}, args.Error(1)
+	}
+	return args.Get(0).(models.RegularStack), args.Error(1)
+}
+
 // Team methods
 
 func (m *MockPortainerClient) CreateTeam(name string) (int, error) {

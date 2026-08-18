@@ -109,6 +109,7 @@ type PortainerAPIClient interface {
 	StackStop(id int64, endpointID int64) (*apimodels.PortainereeStack, error)
 	StackMigrate(id int64, endpointID int64, body *apimodels.StacksStackMigratePayload) (*apimodels.PortainereeStack, error)
 	StackCreateStandalone(endpointID int64, body *apimodels.StacksComposeStackFromFileContentPayload) (*apimodels.PortainereeStack, error)
+	StackUpdate(id int64, endpointID int64, body *apimodels.StacksUpdateStackPayload) (*apimodels.PortainereeStack, error)
 }
 
 // PortainerClient is a wrapper around the Portainer SDK client

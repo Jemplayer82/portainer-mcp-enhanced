@@ -744,3 +744,11 @@ func (m *MockPortainerAPI) StackCreateStandalone(endpointID int64, body *apimode
 	}
 	return args.Get(0).(*apimodels.PortainereeStack), args.Error(1)
 }
+
+func (m *MockPortainerAPI) StackUpdate(id int64, endpointID int64, body *apimodels.StacksUpdateStackPayload) (*apimodels.PortainereeStack, error) {
+	args := m.Called(id, endpointID, body)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*apimodels.PortainereeStack), args.Error(1)
+}

@@ -64,7 +64,7 @@ func metaToolDefinitions() []metaToolDef {
 		},
 		{
 			name:        "manage_stacks",
-			description: "Manage Docker stacks (Compose and Edge deployments). Actions: list_stacks, list_regular_stacks, get_stack, get_stack_file, inspect_stack_file, create_stack, create_regular_stack, update_stack, delete_stack, update_stack_git, redeploy_stack_git, start_stack, stop_stack, migrate_stack. 'get_stack_file'/'create_stack' operate on edge stacks; 'inspect_stack_file'/'create_regular_stack' operate on regular (non-edge) stacks deployed directly to one environment. Set 'action' parameter to choose.",
+			description: "Manage Docker stacks (Compose and Edge deployments). Actions: list_stacks, list_regular_stacks, get_stack, get_stack_file, inspect_stack_file, create_stack, create_regular_stack, update_stack, update_regular_stack, delete_stack, update_stack_git, redeploy_stack_git, start_stack, stop_stack, migrate_stack. EDGE stacks (deployed across environment groups) use: get_stack_file, create_stack, update_stack. REGULAR/standalone stacks (deployed directly to one environment) use: inspect_stack_file, create_regular_stack, update_regular_stack, update_stack_git, redeploy_stack_git, start_stack, stop_stack, migrate_stack -- use 'update_stack_git'/'redeploy_stack_git' ONLY if the stack was deployed from a git repo (has a GitConfig); otherwise use 'update_regular_stack' to push new compose content and/or force pullImage/prune, or you'll get a 400 stackGitRedeployBadRequest/stackUpdateGitBadRequest. Set 'action' parameter to choose.",
 			actions: []metaAction{
 				{name: "list_stacks", handler: (*PortainerMCPServer).HandleGetStacks, readOnly: true, toolName: ToolListStacks},
 				{name: "list_regular_stacks", handler: (*PortainerMCPServer).HandleListRegularStacks, readOnly: true, toolName: ToolListRegularStacks},
@@ -74,6 +74,7 @@ func metaToolDefinitions() []metaToolDef {
 				{name: "create_stack", handler: (*PortainerMCPServer).HandleCreateStack, readOnly: false, toolName: ToolCreateStack},
 				{name: "create_regular_stack", handler: (*PortainerMCPServer).HandleCreateRegularStack, readOnly: false, toolName: ToolCreateRegularStack},
 				{name: "update_stack", handler: (*PortainerMCPServer).HandleUpdateStack, readOnly: false, toolName: ToolUpdateStack},
+				{name: "update_regular_stack", handler: (*PortainerMCPServer).HandleUpdateRegularStack, readOnly: false, toolName: ToolUpdateRegularStack},
 				{name: "delete_stack", handler: (*PortainerMCPServer).HandleDeleteStack, readOnly: false, toolName: ToolDeleteStack},
 				{name: "update_stack_git", handler: (*PortainerMCPServer).HandleUpdateStackGit, readOnly: false, toolName: ToolUpdateStackGit},
 				{name: "redeploy_stack_git", handler: (*PortainerMCPServer).HandleRedeployStackGit, readOnly: false, toolName: ToolRedeployStackGit},

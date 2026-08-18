@@ -200,7 +200,7 @@ Run with `-read-only` to restrict to read-only operations. All write, update, an
 | [Getting Started](https://jmrplens.github.io/portainer-mcp-enhanced/getting-started/) | Prerequisites, installation, AI assistant setup |
 | [Configuration](https://jmrplens.github.io/portainer-mcp-enhanced/configuration/) | CLI flags, tool modes, version compatibility |
 | [Meta-Tools Guide](https://jmrplens.github.io/portainer-mcp-enhanced/guides/meta-tools/) | All 15 meta-tools with complete action reference |
-| [Tools Reference](https://jmrplens.github.io/portainer-mcp-enhanced/reference/api-reference/) | All 98 granular tools with parameters |
+| [Tools Reference](https://jmrplens.github.io/portainer-mcp-enhanced/reference/api-reference/) | All 100 granular tools with parameters |
 | [Architecture](https://jmrplens.github.io/portainer-mcp-enhanced/reference/architecture/) | Server layers, client model, project structure |
 | [Security](https://jmrplens.github.io/portainer-mcp-enhanced/guides/security/) | Authentication, TLS, read-only mode, proxy safety |
 | [Contributing](https://jmrplens.github.io/portainer-mcp-enhanced/development/contributing/) | Development setup, code style, adding new tools |
